@@ -1,5 +1,8 @@
 from Xlib import X, display, Xutil
+import Xlib as xlib
 from time import sleep
+
+from subprocess import call
 
 import threading
 
@@ -26,14 +29,15 @@ class Rectangle(Action):
 class Drawing:
     def __init__(self):
         self.d = display.Display()
-        self.window = self.d.screen().root
+        self.screen = self.d.screen()
+        self.window = self.screen.root
 
-        white = 0xffffff
-        black = 0x000000
+
+        fg = 0xff0000
 
         self.gc = self.window.create_gc(
-            line_width = 2,
-            foreground = white,
+            line_width = 4,
+            foreground = fg,
             subwindow_mode = X.IncludeInferiors,
         )
 
@@ -58,7 +62,12 @@ class Drawing:
                 self.redraw()
             e.clear()
 
+    def refresh(self):
+        # TODO: do this with xlib
+        call(["xrefresh"])
+
     def redraw(self):
+        self.refresh()
         for a in self.actions.keys():
             a.draw(self)
         self.d.flush()
@@ -67,6 +76,9 @@ class Drawing:
         if not self.active:
             self.active = True
             self.event.set()
+
+    def disable(self):
+        self.active = False
 
     def stop(self):
         self.shutdown = True
@@ -78,7 +90,8 @@ class Drawing:
 
     def draw(self, action):
         self.actions[action] = True
-        self.enable()
 
+    def undraw(self, action):
+        del self.actions[action]
 
 

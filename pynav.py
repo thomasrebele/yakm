@@ -6,54 +6,65 @@ from time import sleep
 import sys
 from os import _exit
 
-from pymouse import PyMouse
-from pymouse import PyMouseEvent
-from pykeyboard import PyKeyboard
-from pykeyboard import PyKeyboardEvent
-m = PyMouse()
-
+from input import *
 import threading
 
 
-#x_dim, y_dim = m.screen_size()
-#m.click(500, 500, 1)
 
-#k = PyKeyboard()
-#k.type_string('Hello, World abc def!')
+class Mode:
+    pass
 
-#m.move(0,0)
+class NormalMode(Mode):
+    def __init__(self, nav):
+        self.nav = nav
 
-class MouseListener(PyMouseEvent):
-    def click(self, x, y, button, pressed):
-        print("x: " + str(x) + " y: " + str(y))
+    def enter(self):
+        self.nav.register_key("u", None, self.move_left)
+        self.nav.register_key("e", None, self.move_right)
+        self.nav.register_key("i", None, self.move_up)
+        self.nav.register_key("a", None, self.move_down)
+        self.nav.register_key("n", None, self.warp)
 
-    def move(self, x, y):
-        print "the mouse was moved to", x, y
+        self.r = self.nav.o.rectangle()
+        self.nav.o.draw(self.r)
 
+    def exit(self):
+        self.nav.unregister_key("u", None)
+        self.nav.unregister_key("e", None)
+        self.nav.unregister_key("i", None)
+        self.nav.unregister_key("a", None)
+        self.nav.unregister_key("n", None)
 
+        self.nav.o.undraw(self.r)
 
-class KeyListener(PyKeyboardEvent):
-    def __init__(self, navigator):
-        PyKeyboardEvent.__init__(self)
-        self.navigator = navigator
+    def move_left(self):
+        self.r.x = max(int(-self.r.w/2), self.r.x - self.r.w)
 
-    def tap(self, keycode, character, press):
-        self.navigator.tap(keycode, character, press)
+    def move_right(self):
+        self.r.x = min(int(self.nav.input.w-self.r.w/2), self.r.x + self.r.w)
+
+    def move_up(self):
+        self.r.y = max(int(-self.r.h/2), self.r.y - self.r.h)
+
+    def move_down(self):
+        self.r.y = min(int(self.nav.input.h-self.r.h/2), self.r.y + self.r.h)
+
+    def warp(self):
+        self.nav.input.move(self.r.x + int(self.r.w/2), self.r.y + int(self.r.h/2))
+        self.nav.input.click(1)
 
 
 class Navigator:
     def __init__(self):
         self.o = Drawing()
+        self.input = Input()
 
-        self.ml = MouseListener()
-        self.ml.start()
+        self.register_key = self.input.register_key
+        self.unregister_key = self.input.unregister_key
 
-        self.kl = KeyListener(self)
-        self.kl.start()
+        self.input.register_key("8", Ctrl|Shift, lambda: self.enter_mode(NormalMode(self)))
 
-        self.r = self.o.rectangle()
-        self.o.draw(self.r)
-
+        self.mode = []
         self._mask = {"Control_L": False}
 
     def __del__(self):
@@ -63,35 +74,26 @@ class Navigator:
     def mask(self):
         return set([k for k,v in self._mask.items() if v])
 
-    def tap(self, keycode, character, press):
-        print("")
-        print("received key event")
-        print("tap " + str(keycode) + "  character: " + str(character) +  "  pressed " + str(press))
-
-        if character in self._mask:
-            self._mask[character] = press
-
-        if character == "c" and self.mask() == set(["Control_L"]):
-            self.o.stop()
-            ### this does not work
-            #self.kl.exit()
-            #self.ml.exit()
-            _exit(0)
-
-        if character == "u":
-            self.r.x -= 100
-        elif character == "i":
-            self.r.y -= 100
-        elif character == "a":
-            self.r.y += 100
-        elif character == "e":
-            self.r.x += 100
-
-        elif character == "n":
-            m.move(self.r.x, self.r.y)
-
-
+    def enter_mode(self, mode):
         self.o.enable()
+        self.mode += [mode]
+        mode.enter()
+        self.input.register_key("z", None, lambda: self.exit_mode())
+        self.input.register_key("Escape", None, lambda: self.exit_mode(all=True))
+
+    def exit_mode(self, all=False):
+        while len(self.mode) > 0:
+            self.mode[-1].exit()
+            self.mode = self.mode[:-1]
+            if not all: break
+
+        if len(self.mode) == 0:
+            self.o.disable()
+            self.input.unregister_key("z", None)
+            self.input.unregister_key("Escape", None)
+
+
+
 
 
 if __name__ == '__main__':
