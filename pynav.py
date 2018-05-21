@@ -47,6 +47,20 @@ def get_cmd(x):
         cmds = [get_cmd(fn) for fn in x]
         return ", ".join(cmds)
 
+
+# https://stackoverflow.com/a/1633483/1562506
+def iter_first_last(it):
+    it = iter(it)
+    prev = next(it)
+    first = True
+    for item in it:
+        yield prev, first, False
+        first = False
+        prev = item
+    # Last item
+    yield prev, first, True
+
+
 ################################################################################
 # actions
 ################################################################################
@@ -255,9 +269,9 @@ class Mode:
 
         print("grid nav " + str(state.grid_nav))
 
-        for gx in range(state.grid.w+1):
-            for gy in range(state.grid.h+1):
-                if state.grid_nav == None or state.grid_nav == "row":
+        for gx, first_x, last_x in iter_first_last(range(state.grid.w+1)):
+            for gy, first_y, last_y in iter_first_last(range(state.grid.h+1)):
+                if first_y or last_y or state.grid_nav == None or state.grid_nav == "row":
                     # horizontal
                     h = Line()
                     h.x1 = state.zone.left() + gx * state.zone.w / state.grid.w
@@ -267,7 +281,7 @@ class Mode:
                     h.y2 = h.y1
                     state.draw(h)
 
-                if state.grid_nav == None or state.grid_nav == "col":
+                if first_x or last_x or state.grid_nav == None or state.grid_nav == "col":
                     # vertical
                     v = Line()
 
