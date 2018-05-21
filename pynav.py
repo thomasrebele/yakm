@@ -151,15 +151,57 @@ def cell_select(x, y):
 
     return annotate(upd, "cell_select " + str(x) + " " + str(y))
 
+# grid navigation
+def grid_nav(state):
+    global grid_nav_chars
+
+    # prepare for selecting rows
+    state.grid_nav = "row"
+    for i, c in enumerate(grid_nav_chars):
+        state.register_key(c, lambda state=state, i=i: row_select(i)(state))
+
+    state.nav.update_mode()
+
+
+def row_select(y):
+    def upd(state, y=y):
+        print("selecting row " +str(y))
+        top = state.zone.top() + y / state.grid.h  * state.zone.h
+        state.zone.y = top + 0.5 * state.zone.h / state.grid.h
+        state.zone.h /= state.grid.h
+
+        # prepare for selecting cols
+        state.grid_nav = "col"
+        for i, c in enumerate(grid_nav_chars):
+            state.register_key(c, lambda state=state, i=i: col_select(i)(state))
+
+        state.nav.update_mode()
+
+    return annotate(upd, "row_select " + str(y))
+
+def col_select(x):
+    def upd(state, x=x):
+        print("selecting col " +str(x))
+        left = state.zone.left() + x / state.grid.w  * state.zone.w
+        state.zone.x = left + 0.5 * state.zone.w / state.grid.w
+        state.zone.w /= state.grid.w
+
+        state.grid_nav = None
+        state.nav.update_mode()
+
+    return annotate(upd, "col_select " + str(x))
+
+
 
 # annotate functions without arguments
-for i in [warp, start, clear, info, exit, end]:
+for i in [warp, start, clear, info, exit, end, grid_nav]:
     i = annotate(i, i.__name__)
 
 
 ################################################################################
 # configuration
 ################################################################################
+
 
 conf = {
     "u": [move_left(0.5), warp],
@@ -178,6 +220,7 @@ conf = {
 
     "o" : [grid(3,3)],
     "h" : [cell_select(1,3)],
+    "b" : [grid_nav],
 
     "k": [cursorzoom(342, 192)],
     "p": [enlarge(1.5)],
@@ -191,9 +234,11 @@ conf = {
     "Escape": [end],
 }
 
-grid_nav = {
+# QWERTY layout
+grid_nav_chars = ["q", "w", "e", "r", "t", "y", "u", "i", "i", "o", "p"]
 
-}
+# QWERTZ layout
+grid_nav_chars = ["x", "v", "l", "c", "w", "k", "h", "g", "f", "q"]
 
 
 class Mode:
@@ -208,29 +253,47 @@ class Mode:
         enabled = state.vis.active
         state.vis.disable()
 
+        print("grid nav " + str(state.grid_nav))
+
         for gx in range(state.grid.w+1):
             for gy in range(state.grid.h+1):
-                # horizontal
-                h = Line()
-                h.x1 = state.zone.left() + gx * state.zone.w / state.grid.w
-                h.x2 = state.zone.right()
+                if state.grid_nav == None or state.grid_nav == "row":
+                    # horizontal
+                    h = Line()
+                    h.x1 = state.zone.left() + gx * state.zone.w / state.grid.w
+                    h.x2 = state.zone.right()
 
-                h.y1 = state.zone.top() + gy * state.zone.h / state.grid.h
-                h.y2 = h.y1
-                state.draw(h)
+                    h.y1 = state.zone.top() + gy * state.zone.h / state.grid.h
+                    h.y2 = h.y1
+                    state.draw(h)
 
-                # vertical
-                v = Line()
+                if state.grid_nav == None or state.grid_nav == "col":
+                    # vertical
+                    v = Line()
 
-                v.x1 = state.zone.left() + gx * state.zone.w / state.grid.w
-                v.x2 = v.x1
+                    v.x1 = state.zone.left() + gx * state.zone.w / state.grid.w
+                    v.x2 = v.x1
 
-                v.y1 = state.zone.top() + gy * state.zone.h / state.grid.h
-                v.y2 = state.zone.bottom()
-                state.draw(v)
+                    v.y1 = state.zone.top() + gy * state.zone.h / state.grid.h
+                    v.y2 = state.zone.bottom()
+                    state.draw(v)
 
-        l = Label()
-        state.draw(l)
+        if state.grid_nav == "row":
+            for gy in range(state.grid.h):
+                l = Label()
+                l.x = state.zone.left() + 0.5 * state.zone.w / state.grid.w
+                l.y = state.zone.top() + (gy + 0.5) * state.zone.h / state.grid.h
+                l.text = str(grid_nav_chars[gy])
+                state.draw(l)
+
+        if state.grid_nav == "col":
+            for gx in range(state.grid.w):
+                l = Label()
+                l.x = state.zone.left() + (gx + 0.5) * state.zone.w / state.grid.w
+                l.y = state.zone.top() + 0.5 * state.zone.h / state.grid.h
+                l.text = str(grid_nav_chars[gx])
+                state.draw(l)
+
 
         if enabled: state.vis.enable()
 
@@ -296,6 +359,7 @@ class State:
         self.grid.w = 1
         self.grid.h = 1
         self.drag = False
+        self.grid_nav = None # or "row", or "col"
 
 class Navigator:
     def __init__(self):
@@ -339,6 +403,8 @@ class Navigator:
             self.vis.refresh()
             self.input.ungrab_keyboard()
 
+    def update_mode(self):
+        self.mode[-1].update(self.state)
 
 
 

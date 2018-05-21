@@ -49,7 +49,9 @@ class Label(Action):
     def __init__(self):
         self.x = 0
         self.y = 0
-        self.text = "abc"
+        self.anchor_x = 0.5
+        self.anchor_y = 0.5
+        self.text = "<label>"
 
     def draw(self, drawing):
         # coordinates are bottom left corner of text
@@ -60,8 +62,8 @@ class Label(Action):
         shift_y = info["font_ascent"]
 
         drawing.window.draw_text(drawing.gc,
-                int(self.x),
-                int(self.y + shift_y),
+                int(self.x - self.anchor_x * width),
+                int(self.y + shift_y - self.anchor_y * height),
                 self.text.encode()
         )
 
@@ -137,7 +139,7 @@ class Drawing:
 
             cnt = 0
             while self.active:
-                sleep(0.01)
+                sleep(0.04)
                 cnt += 1
                 if cnt % 50 == 0: self.refresh()
                 try:
