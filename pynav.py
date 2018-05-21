@@ -4,45 +4,32 @@
 from draw import *
 from time import sleep
 import sys
-from os import _exit
 
 from input import *
-import threading
 
-# actions:
-# start
-# end
-# clear: remove keybindings
-# daemonize: execute in background
-# cursorzoom <w> <h>: center rectangle around cursor
-# grid 2x3
-# grid-nav off
-# grid-nav toggle
-# click 1
-# cell-select 1x3
+# implemented actions:
+
 # warp
-# drag 1
-# history-back
 # move-left .5
 # move-up .5
 # move-down .5
 # move-right .5
+# cursorzoom <w> <h>: center rectangle around cursor
+# click 1
 
 
-class State:
-    def __init__(self, nav):
-        self.move = nav.input.move
-        self.click = nav.input.click
+# todo
 
-        self.zone = Zone()
-        self.register_key = nav.register_key
-        self.unregister_key = nav.unregister_key
-
-        self.draw = nav.o.draw
-
-        # TODO: remove this
-        self.nav = nav
-
+# start
+# end
+# clear: remove keybindings
+# daemonize: execute in background
+# grid 2x3
+# grid-nav off
+# grid-nav toggle
+# cell-select 1x3
+# drag 1
+# history-back
 
 
 
@@ -62,10 +49,9 @@ def move_left(ratio):
         state.zone.x = max(0, state.zone.x - state.zone.w * ratio)
     return upd
 
-
 def move_right(ratio):
     def upd(state, ratio=ratio):
-        state.zone.x = min(state.nav.input.w, state.zone.x + state.zone.w * ratio)
+        state.zone.x = min(state.screen.w, state.zone.x + state.zone.w * ratio)
     return upd
 
 def move_up(ratio):
@@ -75,18 +61,31 @@ def move_up(ratio):
 
 def move_down(ratio):
     def upd(state, ratio=ratio):
-        state.zone.y = min(state.nav.input.h, state.zone.y + state.zone.h * ratio)
+        state.zone.y = min(state.screen.h, state.zone.y + state.zone.h * ratio)
+    return upd
+
+def cursorzoom(w, h):
+    def upd(state, w=w, h=h):
+        state.zone.w = w
+        state.zone.h = h
+        p = state.pointer()
+        state.zone.x = p.x
+        state.zone.y = p.y
+    return upd
+
+def enlarge(ratio):
+    def upd(state, ratio=ratio):
+        state.zone.w *= ratio
+        state.zone.h *= ratio
     return upd
 
 
 
 
-#conf = {
-#        "ctrl+shift+8":  "start",
-#        "u": ["move-left 0.5", "warp"],
-#        "e": ["move-right 0.5", "warp"],
-#    }
 
+################################################################################
+# configuration
+################################################################################
 
 conf = {
     "u": [move_left(0.5), warp],
@@ -94,7 +93,11 @@ conf = {
     "i": [move_up(0.5), warp],
     "a": [move_down(0.5), warp],
     "n": [click(1)],
+    "r": [cursorzoom(20, 20)],
+    "p": [enlarge(1.5)],
 }
+
+
 
 class Mode:
     def __init__(self, conf):
@@ -115,8 +118,28 @@ class Mode:
         for key in conf:
             state.unregister_key(key, None)
 
-        state.nav.o.undraw(state.zone)
+        state.undraw(state.zone)
 
+class Size:
+    w = 0
+    h = 0
+
+class State:
+    def __init__(self, nav):
+        self.move = nav.input.move
+        self.click = nav.input.click
+
+        self.zone = Zone()
+        self.register_key = nav.register_key
+        self.unregister_key = nav.unregister_key
+
+        self.draw = nav.o.draw
+        self.undraw = nav.o.undraw
+        self.pointer = nav.input.pointer
+
+        self.screen = Size()
+        self.screen.w = nav.input.w
+        self.screen.h = nav.input.h
 
 
 class Navigator:

@@ -5,12 +5,17 @@ import threading
 
 import Xlib
 from Xlib import X, XK
-from Xlib.display import Display
 
-disp = Display()
+Shift = X.ShiftMask
+Ctrl = X.ControlMask
+
+disp = Xlib.display.Display()
 screen = disp.screen()
 root = screen.root
 
+class Coord:
+    x = 0
+    y = 0
 
 def get_keycode(key):
     key_sym = XK.string_to_keysym(key)
@@ -32,14 +37,10 @@ def grab_key(key_code, mod):
     for i in ignore_mod([X.LockMask, X.Mod2Mask]):
         root.grab_key(key_code, mod|i, 0, X.GrabModeAsync, X.GrabModeAsync)
 
-
 def ungrab_key(key_code, mod):
     for i in ignore_mod([X.LockMask, X.Mod2Mask]):
         root.ungrab_key(key_code, mod|i)
 
-
-Shift = X.ShiftMask
-Ctrl = X.ControlMask
 
 class Input:
     def __init__(self):
@@ -97,10 +98,7 @@ class Input:
     def move(self, x, y):
         root.warp_pointer(int(x), int(y))
 
-    def click(self, button):
-        key = X.Button1
-        mod = 0
-
+    def pointer(self):
         window = root.query_pointer().child
         try:
             x = window.query_pointer().win_x
@@ -110,11 +108,33 @@ class Input:
             x = root.query_pointer().win_x
             y = root.query_pointer().win_y
 
-        for Event in [Xlib.protocol.event.ButtonPress, Xlib.protocol.event.ButtonRelease]:
+        p = Coord()
+        p.x, p.y = x, y
+        return p
 
+
+    def click(self, button, actions=["press", "release"]):
+        key = X.Button1
+        mod = 0
+
+        window = root.query_pointer().child
+        try:
+            window.query_pointer()
+        except:
+            window = root
+
+        p = self.pointer()
+
+        m = {
+            "press": Xlib.protocol.event.ButtonPress,
+            "release": Xlib.protocol.event.ButtonRelease
+        }
+
+        for act in actions:
+            Event = m[act]
             evt_key = Event(detail=key, state=mod,
                           root=root, window=window, child=X.NONE,
-                          root_x=0, root_y=0, event_x=x, event_y=y,
+                          root_x=0, root_y=0, event_x=p.x, event_y=p.y,
                           same_screen=1, time=X.CurrentTime
                          )
 
