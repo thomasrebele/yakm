@@ -146,7 +146,6 @@ class Input:
             window = root
 
         p = self.pointer()
-
         m = {
             "press": X.ButtonPress,
             "release":  X.ButtonRelease,
@@ -154,18 +153,7 @@ class Input:
 
 
         for act in actions:
-            print("action: " + str(act))
-
-        #    Event = m[act]
-        #    evt_key = Event(detail=key, state=mod,
-        #                  root=root, window=window, child=X.NONE,
-        #                  root_x=0, root_y=0, event_x=p.x, event_y=p.y,
-        #                  same_screen=1, time=X.CurrentTime
-        #                 )
-        #    window.send_event(evt_key)
-
             event = m[act]
-
             fake_input(disp, event, key)
 
 

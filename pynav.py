@@ -60,9 +60,11 @@ def start(state):
 
     state.grab_keyboard()
 
+def exit(state):
+    state.nav.exit_mode()
 
 def end(state):
-    state.ungrab_keyboard()
+    state.nav.exit_mode(all=True)
 
 
 def clear(state):
@@ -133,7 +135,9 @@ def grid(w, h):
 
 def cell_select(x, y):
     def upd(state, x=x-1, y=y-1):
-        print("set to " + str(x) + " " + str(y))
+        if x > state.grid.w or y > state.grid.h:
+            return
+
         left = state.zone.left() + x / state.grid.w  * state.zone.w
         top = state.zone.top() + y / state.grid.h  * state.zone.h
 
@@ -146,7 +150,7 @@ def cell_select(x, y):
 
 
 # annotate functions without arguments
-for i in [warp, start, clear, info]:
+for i in [warp, start, clear, info, exit, end]:
     i = annotate(i, i.__name__)
 
 
@@ -179,6 +183,9 @@ conf = {
     "x": [info],
     "ctrl+shift+i": [info],
     #"c": [clear],
+
+    "z": [exit],
+    "Escape": [end],
 }
 
 
@@ -191,6 +198,8 @@ class Mode:
     def update(self, state):
         # draw grid
         state.undraw()
+
+        enabled = state.vis.active
         state.vis.disable()
 
         for gx in range(state.grid.w+1):
@@ -214,7 +223,7 @@ class Mode:
                 v.y2 = state.zone.bottom()
                 state.draw(v)
 
-        state.vis.enable()
+        if enabled: state.vis.enable()
 
         pass
 
@@ -259,10 +268,13 @@ class State:
         self.grab_keyboard = nav.input.grab_keyboard
         self.ungrab_keyboard = nav.input.ungrab_keyboard
 
-        self.vis = nav.vis
         self.draw = nav.vis.draw
         self.undraw = nav.vis.undraw
         self.pointer = nav.input.pointer
+
+        # references
+        self.vis = nav.vis
+        self.nav = nav
 
         # info
         self.screen = Size()
@@ -291,7 +303,6 @@ class Navigator:
                     for act in action:
                         act(self.state)
 
-                print("register " + key)
                 self.input.register_key(key, fn)
 
         self.state = State(self)
@@ -306,8 +317,6 @@ class Navigator:
 
         self.mode += [mode]
         mode.enter(self.state)
-        self.input.register_key("z", lambda: self.exit_mode())
-        self.input.register_key("Escape", lambda: self.exit_mode(all=True))
 
     def exit_mode(self, all=False):
         while len(self.mode) > 0:
@@ -318,9 +327,8 @@ class Navigator:
 
         if len(self.mode) == 0:
             self.vis.disable()
+            self.vis.refresh()
             self.input.ungrab_keyboard()
-            self.input.unregister_key("z")
-            self.input.unregister_key("Escape")
 
 
 
