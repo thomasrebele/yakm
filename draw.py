@@ -4,6 +4,7 @@ from time import sleep
 
 from subprocess import call
 
+import traceback
 import threading
 
 class Action:
@@ -44,6 +45,28 @@ class Line(Action):
     def __str__(self):
         return "line: " + str(self.x1) + "," + str(self.y1) + " - " + str(self.x2) + "," + str(self.y2)
 
+class Label(Action):
+    def __init__(self):
+        self.x = 0
+        self.y = 0
+        self.text = "abc"
+
+    def draw(self, drawing):
+        # coordinates are bottom left corner of text
+
+        info = drawing.gc.query_text_extents(self.text.encode())._data
+        width = info["overall_width"]
+        height = info["font_ascent"] + info["font_descent"]
+        shift_y = info["font_ascent"]
+
+        drawing.window.draw_text(drawing.gc,
+                int(self.x),
+                int(self.y + shift_y),
+                self.text.encode()
+        )
+
+        pass
+
 
 
 class Zone(Action):
@@ -77,16 +100,23 @@ class Zone(Action):
 class Drawing:
     def __init__(self):
         self.d = display.Display()
+        font = self.d.open_font("-adobe-helvetica-*-r-normal-*-50-*-*-*-*-*-*-*")
+        if font == None:
+            font = self.d.open_font("-*-*-bold-r-normal--25-*-*-75-*-*-*-*")
+
         self.screen = self.d.screen()
         self.window = self.screen.root
 
 
         fg = 0xff0000
+        bg = 0x00ff00
 
         self.gc = self.window.create_gc(
             line_width = 4,
             foreground = fg,
+            background = bg,
             subwindow_mode = X.IncludeInferiors,
+            font = font,
         )
 
         self.actions = {}
@@ -110,7 +140,12 @@ class Drawing:
                 sleep(0.01)
                 cnt += 1
                 if cnt % 50 == 0: self.refresh()
-                self.redraw()
+                try:
+                    self.redraw()
+                except Exception as e:
+                    traceback.print_exc()
+                    print(e)
+                    return
             e.clear()
 
     def refresh(self):
@@ -118,7 +153,7 @@ class Drawing:
         call(["xrefresh"])
 
     def redraw(self):
-        for a in self.actions.keys():
+        for a in list(self.actions.keys()):
             a.draw(self)
         self.d.flush()
 

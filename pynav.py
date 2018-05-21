@@ -9,25 +9,28 @@ from input import *
 
 # implemented actions:
 
+# start
+# end
+
 # warp
+# click 1
+# drag 1
+
 # move-left .5
 # move-up .5
 # move-down .5
 # move-right .5
 # cursorzoom <w> <h>: center rectangle around cursor
-# click 1
+
 # grid 2x3
-# drag 1
+# cell-select 1x3
 
 # todo
 
-# start
-# end
 # clear: remove keybindings
 # daemonize: execute in background
 # grid-nav off
 # grid-nav toggle
-# cell-select 1x3
 # history-back
 
 def annotate(fn, cmd):
@@ -188,6 +191,9 @@ conf = {
     "Escape": [end],
 }
 
+grid_nav = {
+
+}
 
 
 class Mode:
@@ -222,6 +228,9 @@ class Mode:
                 v.y1 = state.zone.top() + gy * state.zone.h / state.grid.h
                 v.y2 = state.zone.bottom()
                 state.draw(v)
+
+        l = Label()
+        state.draw(l)
 
         if enabled: state.vis.enable()
 
