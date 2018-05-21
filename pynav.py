@@ -61,8 +61,10 @@ def start(state):
 
     state.grab_keyboard()
 
+
 def end(state):
     state.ungrab_keyboard()
+
 
 def clear(state):
     for k in state.key_bindings():
@@ -124,6 +126,12 @@ def enlarge(ratio):
         state.zone.h *= ratio
     return annotate(upd, "enlarge " + str(ratio))
 
+def grid(w, h):
+    def upd(state, w=w, h=h):
+        state.grid.w = w
+        state.grid.h = h
+    return annotate(upd, "grid " + str(w) + " " + str(h))
+
 # annotate functions without arguments
 for i in [warp, start, clear, info]:
     i = annotate(i, i.__name__)
@@ -144,12 +152,11 @@ conf = {
     "t": [click(3)],
 
 
-    "h": [drag(1)],
-    "g": [drag(2)],
-    "f": [drag(3)],
+    "shift+n": [drag(1)],
+    "shift+r": [drag(2)],
+    "shift+t": [drag(3)],
 
-
-
+    "o" : [grid(9,9)],
 
     "k": [cursorzoom(342, 192)],
     "p": [enlarge(1.5)],
@@ -166,11 +173,42 @@ class Mode:
         self.conf = conf
         pass
 
+    def update(self, state):
+        # draw grid
+        state.undraw()
+        state.vis.disable()
+
+        for gx in range(state.grid.w+1):
+            for gy in range(state.grid.h+1):
+                # horizontal
+                h = Line()
+                h.x1 = state.zone.left() + gx * state.zone.w / state.grid.w
+                h.x2 = state.zone.right()
+
+                h.y1 = state.zone.top() + gy * state.zone.h / state.grid.h
+                h.y2 = h.y1
+                state.draw(h)
+
+                # vertical
+                v = Line()
+
+                v.x1 = state.zone.left() + gx * state.zone.w / state.grid.w
+                v.x2 = v.x1
+
+                v.y1 = state.zone.top() + gy * state.zone.h / state.grid.h
+                v.y2 = state.zone.bottom()
+                state.draw(v)
+
+        state.vis.enable()
+
+        pass
+
     def enter(self, state):
         for key, action in conf.items():
             def fn(action=action, state=state):
                 for act in action:
                     act(state)
+                self.update(state)
 
             fn = annotate(fn, get_cmd(action))
             state.register_key(key, fn)
@@ -182,7 +220,7 @@ class Mode:
         for key in conf:
             state.unregister_key(key)
 
-        state.undraw(state.zone)
+        state.undraw()
 
 class Size:
     w = 0
@@ -200,8 +238,9 @@ class State:
         self.grab_keyboard = nav.input.grab_keyboard
         self.ungrab_keyboard = nav.input.ungrab_keyboard
 
-        self.draw = nav.o.draw
-        self.undraw = nav.o.undraw
+        self.vis = nav.vis
+        self.draw = nav.vis.draw
+        self.undraw = nav.vis.undraw
         self.pointer = nav.input.pointer
 
         # info
@@ -211,11 +250,14 @@ class State:
 
         # state
         self.zone = Zone()
+        self.grid = Size()
+        self.grid.w = 1
+        self.grid.h = 1
         self.drag = False
 
 class Navigator:
     def __init__(self):
-        self.o = Drawing()
+        self.vis = Drawing()
         self.input = Input()
 
         self.register_key = self.input.register_key
@@ -227,10 +269,10 @@ class Navigator:
         self.mode = []
 
     def __del__(self):
-        self.o.stop()
+        self.vis.stop()
 
     def enter_mode(self, mode):
-        self.o.enable()
+        self.vis.enable()
         self.input.grab_keyboard()
 
         self.mode += [mode]
@@ -245,7 +287,7 @@ class Navigator:
             if not all: break
 
         if len(self.mode) == 0:
-            self.o.disable()
+            self.vis.disable()
             self.input.ungrab_keyboard()
             self.input.unregister_key("z")
             self.input.unregister_key("Escape")

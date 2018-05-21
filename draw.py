@@ -25,6 +25,27 @@ class Rectangle(Action):
             int(self.h)
         )
 
+class Line(Action):
+    def __init__(self):
+        self.x1 = 0
+        self.y1 = 0
+        self.x2 = 100
+        self.y2 = 100
+
+    def draw(self, drawing):
+        drawing.window.line(drawing.gc,
+            # TODO: intersection with border
+            max(0,int(self.x1)),
+            max(0,int(self.y1)),
+            max(0,int(self.x2)),
+            max(0,int(self.y2))
+        )
+
+    def __str__(self):
+        return "line: " + str(self.x1) + "," + str(self.y1) + " - " + str(self.x2) + "," + str(self.y2)
+
+
+
 class Zone(Action):
     def __init__(self):
         self.x = 0
@@ -40,7 +61,17 @@ class Zone(Action):
             int(self.h)
         )
 
+    def left(self):
+        return self.x-self.w/2
 
+    def right(self):
+        return self.x+self.w/2
+
+    def top(self):
+        return self.y-self.h/2
+
+    def bottom(self):
+        return self.y+self.h/2
 
 
 class Drawing:
@@ -74,8 +105,11 @@ class Drawing:
             if self.shutdown:
                 break
 
+            cnt = 0
             while self.active:
                 sleep(0.01)
+                cnt += 1
+                if cnt % 4 == 0: self.refresh()
                 self.redraw()
             e.clear()
 
@@ -84,7 +118,6 @@ class Drawing:
         call(["xrefresh"])
 
     def redraw(self):
-        self.refresh()
         for a in self.actions.keys():
             a.draw(self)
         self.d.flush()
@@ -105,7 +138,10 @@ class Drawing:
     def draw(self, action):
         self.actions[action] = True
 
-    def undraw(self, action):
-        del self.actions[action]
+    def undraw(self, action=None):
+        if not action:
+            self.actions.clear()
+        else:
+            del self.actions[action]
 
 
