@@ -69,6 +69,9 @@ def info(state):
     for key, action in state.key_bindings().items():
         print("    key " + str(key) + " -> " + str(get_cmd(action)))
 
+def ignore(state):
+    pass
+
 
 def click(button):
     return annotate(lambda state: state.click(button), "click " + str(button))
@@ -126,15 +129,22 @@ for i in [warp, start, clear, info]:
 ################################################################################
 
 conf = {
-    "u": [move_left(0.5), warp],
-    "e": [move_right(0.5), warp],
-    "i": [move_up(0.5), warp],
-    "a": [move_down(0.5), warp],
+    #"u": [move_left(0.5), warp],
+    #"e": [move_right(0.5), warp],
+    #"i": [move_up(0.5), warp],
+    #"a": [move_down(0.5), warp],
+
+    "u": [ignore],
+    "e": [ignore],
+    "i": [ignore],
+    "a": [ignore],
+
 
     "n": [click(1)],
-    "t": [drag(1)],
+    "r": [click(2)],
+    "t": [click(3)],
 
-    "r": [cursorzoom(342, 192)],
+    "h": [cursorzoom(342, 192)],
     "p": [enlarge(1.5)],
     "ctrl+shift+7": [start],
     "x": [info],

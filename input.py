@@ -120,8 +120,9 @@ class Input:
         self.active = False
 
     def move(self, x, y):
-        fake_input(disp, X.MotionNotify, x=int(x), y=int(y))
-        #root.warp_pointer(int(x), int(y))
+        #fake_input(disp, X.MotionNotify, x=int(x), y=int(y))
+        p = self.pointer()
+        disp.warp_pointer(int(x-p.x), int(y-p.y))
 
     def pointer(self):
         window = root.query_pointer().child
@@ -150,10 +151,6 @@ class Input:
 
         p = self.pointer()
 
-        m = {
-            "press": Xlib.protocol.event.ButtonPress,
-            "release": Xlib.protocol.event.ButtonRelease
-        }
         m = {
             "press": X.ButtonPress,
             "release":  X.ButtonRelease,
