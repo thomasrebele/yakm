@@ -31,7 +31,19 @@ from input import *
 # drag 1
 # history-back
 
+def annotate(fn, cmd):
+    fn.cmd = str(cmd)
+    return fn
 
+def get_cmd(x):
+    if type(x) == type(lambda: x):
+        try:
+            return x.cmd
+        except:
+            return x.__name__
+    if type(x) == list:
+        cmds = [get_cmd(fn) for fn in x]
+        return ", ".join(cmds)
 
 ################################################################################
 # actions
@@ -40,29 +52,54 @@ from input import *
 def warp(state):
     state.move(state.zone.x, state.zone.y)
 
+def start(state):
+    ### TODO: enter mode
+    state.zone.w = state.screen.w
+    state.zone.h = state.screen.h
+    state.zone.x = state.screen.w/2
+    state.zone.y = state.screen.h/2
+
+def clear(state):
+    for k in state.key_bindings():
+        state.unregister_key(k)
+
+
+def info(state):
+    print("bindings:")
+    for key, action in state.key_bindings().items():
+        print("    key " + str(key) + " -> " + str(get_cmd(action)))
+
+
 def click(button):
-    return lambda state: state.click(button)
+    return annotate(lambda state: state.click(button), "click " + str(button))
+
+def drag(button):
+    def upd(state, button=button):
+        actions = ["release"] if state.drag else ["press"]
+        state.drag = not state.drag
+        state.click(button, actions=actions)
+    return annotate(upd, "drag " + str(button))
 
 
 def move_left(ratio):
     def upd(state, ratio=ratio):
         state.zone.x = max(0, state.zone.x - state.zone.w * ratio)
-    return upd
+    return annotate(upd, "move_left " + str(ratio))
 
 def move_right(ratio):
     def upd(state, ratio=ratio):
         state.zone.x = min(state.screen.w, state.zone.x + state.zone.w * ratio)
-    return upd
+    return annotate(upd, "move_right " + str(ratio))
 
 def move_up(ratio):
     def upd(state, ratio=ratio):
         state.zone.y = max(0, state.zone.y - state.zone.h * ratio)
-    return upd
+    return annotate(upd, "move_up " + str(ratio))
 
 def move_down(ratio):
     def upd(state, ratio=ratio):
         state.zone.y = min(state.screen.h, state.zone.y + state.zone.h * ratio)
-    return upd
+    return annotate(upd, "move_down " + str(ratio))
 
 def cursorzoom(w, h):
     def upd(state, w=w, h=h):
@@ -71,16 +108,17 @@ def cursorzoom(w, h):
         p = state.pointer()
         state.zone.x = p.x
         state.zone.y = p.y
-    return upd
+    return annotate(upd, "cursorzoom " + str(w) + " " + str(h))
 
 def enlarge(ratio):
     def upd(state, ratio=ratio):
         state.zone.w *= ratio
         state.zone.h *= ratio
-    return upd
+    return annotate(upd, "enlarge " + str(ratio))
 
-
-
+# annotate functions without arguments
+for i in [warp, start, clear, info]:
+    i = annotate(i, i.__name__)
 
 
 ################################################################################
@@ -92,9 +130,16 @@ conf = {
     "e": [move_right(0.5), warp],
     "i": [move_up(0.5), warp],
     "a": [move_down(0.5), warp],
+
     "n": [click(1)],
-    "r": [cursorzoom(20, 20)],
+    "t": [drag(1)],
+
+    "r": [cursorzoom(342, 192)],
     "p": [enlarge(1.5)],
+    "ctrl+shift+7": [start],
+    "x": [info],
+    "ctrl+shift+i": [info],
+    "c": [clear],
 }
 
 
@@ -109,14 +154,16 @@ class Mode:
             def fn(action=action, state=state):
                 for act in action:
                     act(state)
-            state.register_key(key, None, fn)
+
+            fn = annotate(fn, get_cmd(action))
+            state.register_key(key, fn)
 
         state.draw(state.zone)
         self.state = state
 
     def exit(self, state):
         for key in conf:
-            state.unregister_key(key, None)
+            state.unregister_key(key)
 
         state.undraw(state.zone)
 
@@ -126,21 +173,26 @@ class Size:
 
 class State:
     def __init__(self, nav):
+        # functions
         self.move = nav.input.move
         self.click = nav.input.click
 
-        self.zone = Zone()
         self.register_key = nav.register_key
         self.unregister_key = nav.unregister_key
+        self.key_bindings = nav.input.key_bindings
 
         self.draw = nav.o.draw
         self.undraw = nav.o.undraw
         self.pointer = nav.input.pointer
 
+        # info
         self.screen = Size()
         self.screen.w = nav.input.w
         self.screen.h = nav.input.h
 
+        # state
+        self.zone = Zone()
+        self.drag = False
 
 class Navigator:
     def __init__(self):
@@ -150,7 +202,7 @@ class Navigator:
         self.register_key = self.input.register_key
         self.unregister_key = self.input.unregister_key
 
-        self.input.register_key("8", Ctrl|Shift, lambda: self.enter_mode(Mode(conf)))
+        self.input.register_key("ctrl+shift+8", lambda: self.enter_mode(Mode(conf)))
 
         self.state = State(self)
         self.mode = []
@@ -162,8 +214,8 @@ class Navigator:
         self.o.enable()
         self.mode += [mode]
         mode.enter(self.state)
-        self.input.register_key("z", None, lambda: self.exit_mode())
-        self.input.register_key("Escape", None, lambda: self.exit_mode(all=True))
+        self.input.register_key("z", lambda: self.exit_mode())
+        self.input.register_key("Escape", lambda: self.exit_mode(all=True))
 
     def exit_mode(self, all=False):
         while len(self.mode) > 0:
@@ -173,8 +225,8 @@ class Navigator:
 
         if len(self.mode) == 0:
             self.o.disable()
-            self.input.unregister_key("z", None)
-            self.input.unregister_key("Escape", None)
+            self.input.unregister_key("z")
+            self.input.unregister_key("Escape")
 
 
 
