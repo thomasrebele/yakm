@@ -50,7 +50,6 @@ class Input:
         self.actions = {}
 
         geo = root.get_geometry()
-        print(geo)
 
         self.w = geo.width
         self.h = geo.height
@@ -68,7 +67,8 @@ class Input:
 
 
         elif evt.type == X.KeyRelease:
-            print("\nrelease: " + str(evt) + "\n")
+            #print("\nrelease: " + str(evt) + "\n")
+            pass
 
     def event_loop(self):
         while self.active:
@@ -95,7 +95,7 @@ class Input:
         self.active = False
 
     def move(self, x, y):
-        root.warp_pointer(x, y)
+        root.warp_pointer(int(x), int(y))
 
     def click(self, button):
         key = X.Button1

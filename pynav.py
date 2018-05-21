@@ -9,49 +9,114 @@ from os import _exit
 from input import *
 import threading
 
+# actions:
+# start
+# end
+# clear: remove keybindings
+# daemonize: execute in background
+# cursorzoom <w> <h>: center rectangle around cursor
+# grid 2x3
+# grid-nav off
+# grid-nav toggle
+# click 1
+# cell-select 1x3
+# warp
+# drag 1
+# history-back
+# move-left .5
+# move-up .5
+# move-down .5
+# move-right .5
 
 
-class Mode:
-    pass
-
-class NormalMode(Mode):
+class State:
     def __init__(self, nav):
+        self.move = nav.input.move
+        self.click = nav.input.click
+
+        self.zone = Zone()
+        self.register_key = nav.register_key
+        self.unregister_key = nav.unregister_key
+
+        self.draw = nav.o.draw
+
+        # TODO: remove this
         self.nav = nav
 
-    def enter(self):
-        self.nav.register_key("u", None, self.move_left)
-        self.nav.register_key("e", None, self.move_right)
-        self.nav.register_key("i", None, self.move_up)
-        self.nav.register_key("a", None, self.move_down)
-        self.nav.register_key("n", None, self.warp)
 
-        self.r = self.nav.o.rectangle()
-        self.nav.o.draw(self.r)
 
-    def exit(self):
-        self.nav.unregister_key("u", None)
-        self.nav.unregister_key("e", None)
-        self.nav.unregister_key("i", None)
-        self.nav.unregister_key("a", None)
-        self.nav.unregister_key("n", None)
 
-        self.nav.o.undraw(self.r)
+################################################################################
+# actions
+################################################################################
 
-    def move_left(self):
-        self.r.x = max(int(-self.r.w/2), self.r.x - self.r.w)
+def warp(state):
+    state.move(state.zone.x, state.zone.y)
 
-    def move_right(self):
-        self.r.x = min(int(self.nav.input.w-self.r.w/2), self.r.x + self.r.w)
+def click(button):
+    return lambda state: state.click(button)
 
-    def move_up(self):
-        self.r.y = max(int(-self.r.h/2), self.r.y - self.r.h)
 
-    def move_down(self):
-        self.r.y = min(int(self.nav.input.h-self.r.h/2), self.r.y + self.r.h)
+def move_left(ratio):
+    def upd(state, ratio=ratio):
+        state.zone.x = max(0, state.zone.x - state.zone.w * ratio)
+    return upd
 
-    def warp(self):
-        self.nav.input.move(self.r.x + int(self.r.w/2), self.r.y + int(self.r.h/2))
-        self.nav.input.click(1)
+
+def move_right(ratio):
+    def upd(state, ratio=ratio):
+        state.zone.x = min(state.nav.input.w, state.zone.x + state.zone.w * ratio)
+    return upd
+
+def move_up(ratio):
+    def upd(state, ratio=ratio):
+        state.zone.y = max(0, state.zone.y - state.zone.h * ratio)
+    return upd
+
+def move_down(ratio):
+    def upd(state, ratio=ratio):
+        state.zone.y = min(state.nav.input.h, state.zone.y + state.zone.h * ratio)
+    return upd
+
+
+
+
+#conf = {
+#        "ctrl+shift+8":  "start",
+#        "u": ["move-left 0.5", "warp"],
+#        "e": ["move-right 0.5", "warp"],
+#    }
+
+
+conf = {
+    "u": [move_left(0.5), warp],
+    "e": [move_right(0.5), warp],
+    "i": [move_up(0.5), warp],
+    "a": [move_down(0.5), warp],
+    "n": [click(1)],
+}
+
+class Mode:
+    def __init__(self, conf):
+        self.conf = conf
+        pass
+
+    def enter(self, state):
+        for key, action in conf.items():
+            def fn(action=action, state=state):
+                for act in action:
+                    act(state)
+            state.register_key(key, None, fn)
+
+        state.draw(state.zone)
+        self.state = state
+
+    def exit(self, state):
+        for key in conf:
+            state.unregister_key(key, None)
+
+        state.nav.o.undraw(state.zone)
+
 
 
 class Navigator:
@@ -62,28 +127,24 @@ class Navigator:
         self.register_key = self.input.register_key
         self.unregister_key = self.input.unregister_key
 
-        self.input.register_key("8", Ctrl|Shift, lambda: self.enter_mode(NormalMode(self)))
+        self.input.register_key("8", Ctrl|Shift, lambda: self.enter_mode(Mode(conf)))
 
+        self.state = State(self)
         self.mode = []
-        self._mask = {"Control_L": False}
 
     def __del__(self):
         self.o.stop()
-        print('stop')
-
-    def mask(self):
-        return set([k for k,v in self._mask.items() if v])
 
     def enter_mode(self, mode):
         self.o.enable()
         self.mode += [mode]
-        mode.enter()
+        mode.enter(self.state)
         self.input.register_key("z", None, lambda: self.exit_mode())
         self.input.register_key("Escape", None, lambda: self.exit_mode(all=True))
 
     def exit_mode(self, all=False):
         while len(self.mode) > 0:
-            self.mode[-1].exit()
+            self.mode[-1].exit(self.state)
             self.mode = self.mode[:-1]
             if not all: break
 

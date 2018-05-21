@@ -19,11 +19,28 @@ class Rectangle(Action):
 
     def draw(self, drawing):
         drawing.window.rectangle(drawing.gc,
-            self.x,
-            self.y,
-            self.w,
-            self.h
+            int(self.x),
+            int(self.y),
+            int(self.w),
+            int(self.h)
         )
+
+class Zone(Action):
+    def __init__(self):
+        self.x = 0
+        self.y = 0
+        self.w = 100
+        self.h = 100
+
+    def draw(self, drawing):
+        drawing.window.rectangle(drawing.gc,
+            int(self.x-self.w/2),
+            int(self.y-self.h/2),
+            int(self.w),
+            int(self.h)
+        )
+
+
 
 
 class Drawing:
@@ -84,9 +101,6 @@ class Drawing:
         self.shutdown = True
         self.activate = False
         self.event.set()
-
-    def rectangle(self):
-        return Rectangle()
 
     def draw(self, action):
         self.actions[action] = True
