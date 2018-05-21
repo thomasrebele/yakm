@@ -109,7 +109,7 @@ class Drawing:
             while self.active:
                 sleep(0.01)
                 cnt += 1
-                if cnt % 4 == 0: self.refresh()
+                if cnt % 50 == 0: self.refresh()
                 self.redraw()
             e.clear()
 
