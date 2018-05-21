@@ -59,6 +59,11 @@ def start(state):
     state.zone.x = state.screen.w/2
     state.zone.y = state.screen.h/2
 
+    state.grab_keyboard()
+
+def end(state):
+    state.ungrab_keyboard()
+
 def clear(state):
     for k in state.key_bindings():
         state.unregister_key(k)
@@ -129,22 +134,24 @@ for i in [warp, start, clear, info]:
 ################################################################################
 
 conf = {
-    #"u": [move_left(0.5), warp],
-    #"e": [move_right(0.5), warp],
-    #"i": [move_up(0.5), warp],
-    #"a": [move_down(0.5), warp],
-
-    "u": [ignore],
-    "e": [ignore],
-    "i": [ignore],
-    "a": [ignore],
-
+    "u": [move_left(0.5), warp],
+    "e": [move_right(0.5), warp],
+    "i": [move_up(0.5), warp],
+    "a": [move_down(0.5), warp],
 
     "n": [click(1)],
     "r": [click(2)],
     "t": [click(3)],
 
-    "h": [cursorzoom(342, 192)],
+
+    "h": [drag(1)],
+    "g": [drag(2)],
+    "f": [drag(3)],
+
+
+
+
+    "k": [cursorzoom(342, 192)],
     "p": [enlarge(1.5)],
     "ctrl+shift+7": [start],
     "x": [info],
@@ -190,6 +197,8 @@ class State:
         self.register_key = nav.register_key
         self.unregister_key = nav.unregister_key
         self.key_bindings = nav.input.key_bindings
+        self.grab_keyboard = nav.input.grab_keyboard
+        self.ungrab_keyboard = nav.input.ungrab_keyboard
 
         self.draw = nav.o.draw
         self.undraw = nav.o.undraw
@@ -222,6 +231,8 @@ class Navigator:
 
     def enter_mode(self, mode):
         self.o.enable()
+        self.input.grab_keyboard()
+
         self.mode += [mode]
         mode.enter(self.state)
         self.input.register_key("z", lambda: self.exit_mode())
@@ -235,6 +246,7 @@ class Navigator:
 
         if len(self.mode) == 0:
             self.o.disable()
+            self.input.ungrab_keyboard()
             self.input.unregister_key("z")
             self.input.unregister_key("Escape")
 

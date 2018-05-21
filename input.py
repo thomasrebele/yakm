@@ -107,14 +107,16 @@ class Input:
         binding.fn = fn
         self.bindings[(key_code, mod_mask)] = binding
 
-        #root.grab_keyboard(True, X.GrabModeAsync, X.GrabModeAsync,X.CurrentTime)
+    def grab_keyboard(self):
+        root.grab_keyboard(True, X.GrabModeAsync, X.GrabModeAsync,X.CurrentTime)
 
     def unregister_key(self, key):
         key_code, mod_mask = get_keycode(key)
         ungrab_key(key_code, mod_mask)
         del self.bindings[(key_code, mod_mask)]
 
-        #root.ungrab_keyboard(True, X.GrabModeAsync, X.GrabModeAsync,X.CurrentTime)
+    def ungrab_keyboard(self):
+        disp.ungrab_keyboard(X.CurrentTime)
 
     def stop(self):
         self.active = False
@@ -125,14 +127,8 @@ class Input:
         disp.warp_pointer(int(x-p.x), int(y-p.y))
 
     def pointer(self):
-        window = root.query_pointer().child
-        try:
-            x = window.query_pointer().win_x
-            y = window.query_pointer().win_y
-        except:
-            window = root
-            x = root.query_pointer().win_x
-            y = root.query_pointer().win_y
+        x = root.query_pointer().win_x
+        y = root.query_pointer().win_y
 
         p = Coord()
         p.x, p.y = x, y
