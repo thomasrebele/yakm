@@ -175,9 +175,10 @@ conf = {
     "k": [cursorzoom(342, 192)],
     "p": [enlarge(1.5)],
     "ctrl+shift+7": [start],
+    "ctrl+shift+8": [start, cursorzoom(342, 192)],
     "x": [info],
     "ctrl+shift+i": [info],
-    "c": [clear],
+    #"c": [clear],
 }
 
 
@@ -218,6 +219,8 @@ class Mode:
         pass
 
     def enter(self, state):
+        self.prev_bindings = state.key_bindings()
+
         for key, action in conf.items():
             def fn(action=action, state=state):
                 for act in action:
@@ -231,8 +234,12 @@ class Mode:
         self.state = state
 
     def exit(self, state):
-        for key in conf:
-            state.unregister_key(key)
+        for key, action in conf.items():
+            if not start in action:
+                state.unregister_key(key)
+
+        for key, action in self.prev_bindings.items():
+            state.register_key(key, action)
 
         state.undraw()
 
@@ -277,7 +284,15 @@ class Navigator:
         self.register_key = self.input.register_key
         self.unregister_key = self.input.unregister_key
 
-        self.input.register_key("ctrl+shift+8", lambda: self.enter_mode(Mode(conf)))
+        for key, action in conf.items():
+            if start in action:
+                def fn(self=self, action=action):
+                    self.enter_mode(Mode(conf))
+                    for act in action:
+                        act(self.state)
+
+                print("register " + key)
+                self.input.register_key(key, fn)
 
         self.state = State(self)
         self.mode = []
@@ -299,6 +314,7 @@ class Navigator:
             self.mode[-1].exit(self.state)
             self.mode = self.mode[:-1]
             if not all: break
+
 
         if len(self.mode) == 0:
             self.vis.disable()

@@ -129,6 +129,7 @@ class Drawing:
 
     def disable(self):
         self.active = False
+        self.refresh()
 
     def stop(self):
         self.shutdown = True
