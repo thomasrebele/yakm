@@ -16,7 +16,8 @@ from input import *
 # move-right .5
 # cursorzoom <w> <h>: center rectangle around cursor
 # click 1
-
+# grid 2x3
+# drag 1
 
 # todo
 
@@ -24,11 +25,9 @@ from input import *
 # end
 # clear: remove keybindings
 # daemonize: execute in background
-# grid 2x3
 # grid-nav off
 # grid-nav toggle
 # cell-select 1x3
-# drag 1
 # history-back
 
 def annotate(fn, cmd):
@@ -132,6 +131,20 @@ def grid(w, h):
         state.grid.h = h
     return annotate(upd, "grid " + str(w) + " " + str(h))
 
+def cell_select(x, y):
+    def upd(state, x=x-1, y=y-1):
+        print("set to " + str(x) + " " + str(y))
+        left = state.zone.left() + x / state.grid.w  * state.zone.w
+        top = state.zone.top() + y / state.grid.h  * state.zone.h
+
+        state.zone.w = state.zone.w / state.grid.w
+        state.zone.h = state.zone.h / state.grid.h
+        state.zone.x = left + state.zone.w/2
+        state.zone.y = top + state.zone.h/2
+
+    return annotate(upd, "cell_select " + str(x) + " " + str(y))
+
+
 # annotate functions without arguments
 for i in [warp, start, clear, info]:
     i = annotate(i, i.__name__)
@@ -156,7 +169,8 @@ conf = {
     "shift+r": [drag(2)],
     "shift+t": [drag(3)],
 
-    "o" : [grid(9,9)],
+    "o" : [grid(3,3)],
+    "h" : [cell_select(1,3)],
 
     "k": [cursorzoom(342, 192)],
     "p": [enlarge(1.5)],
