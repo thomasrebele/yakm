@@ -66,7 +66,7 @@ def iter_first_last(it):
 ################################################################################
 
 def warp(state):
-    state.move(state.zone.x, state.zone.y)
+    state.nav.move(state.zone.x, state.zone.y)
 
 def start(state):
     ### TODO: enter mode
@@ -75,7 +75,7 @@ def start(state):
     state.zone.x = state.screen.w/2
     state.zone.y = state.screen.h/2
 
-    state.grab_keyboard()
+    state.nav.grab_keyboard()
 
 # suspend current mode
 def suspend(state):
@@ -92,13 +92,13 @@ def end(state):
 
 
 def clear(state):
-    for k in state.key_bindings():
-        state.unregister_key(k)
+    for k in state.nav.key_bindings():
+        state.nav.unregister_key(k)
 
 
 def info(state):
     print("bindings:")
-    for key, action in state.key_bindings().items():
+    for key, action in state.nav.key_bindings().items():
         print("    key " + str(key) + " -> " + str(get_cmd(action)))
 
 def ignore(state):
@@ -106,13 +106,13 @@ def ignore(state):
 
 
 def click(button):
-    return annotate(lambda state: state.click(button), "click " + str(button))
+    return annotate(lambda state: state.nav.click(button), "click " + str(button))
 
 def drag(button):
     def upd(state, button=button):
         actions = ["release"] if state.drag else ["press"]
         state.drag = not state.drag
-        state.click(button, actions=actions)
+        state.nav.click(button, actions=actions)
     return annotate(upd, "drag " + str(button))
 
 
@@ -140,7 +140,7 @@ def cursorzoom(w, h):
     def upd(state, w=w, h=h):
         state.zone.w = w
         state.zone.h = h
-        p = state.pointer()
+        p = state.nav.pointer()
         state.zone.x = p.x
         state.zone.y = p.y
     return annotate(upd, "cursorzoom " + str(w) + " " + str(h))
@@ -179,7 +179,7 @@ def grid_nav(state):
     # prepare for selecting rows
     state.grid_nav = "row"
     for i, c in enumerate(grid_nav_chars):
-        state.register_key(c, lambda state=state, i=i: row_select(i)(state))
+        state.nav.register_key(c, lambda state=state, i=i: row_select(i)(state))
 
     state.nav.update_mode()
 
@@ -194,7 +194,7 @@ def row_select(y):
         # prepare for selecting cols
         state.grid_nav = "col"
         for i, c in enumerate(grid_nav_chars):
-            state.register_key(c, lambda state=state, i=i: col_select(i)(state))
+            state.nav.register_key(c, lambda state=state, i=i: col_select(i)(state))
 
         state.nav.update_mode()
 
@@ -272,10 +272,10 @@ class Mode:
 
     def update(self, state):
         # draw grid
-        state.undraw()
+        state.nav.undraw()
 
-        enabled = state.vis.active
-        state.vis.disable()
+        enabled = state.nav.vis.active
+        state.nav.vis.disable()
 
         print("grid nav " + str(state.grid_nav))
 
@@ -289,18 +289,17 @@ class Mode:
 
                     h.y1 = state.zone.top() + gy * state.zone.h / state.grid.h
                     h.y2 = h.y1
-                    state.draw(h)
+                    state.nav.draw(h)
 
                 if first_x or last_x or state.grid_nav == None or state.grid_nav == "col":
                     # vertical
                     v = Line()
-
                     v.x1 = state.zone.left() + gx * state.zone.w / state.grid.w
                     v.x2 = v.x1
 
                     v.y1 = state.zone.top() + gy * state.zone.h / state.grid.h
                     v.y2 = state.zone.bottom()
-                    state.draw(v)
+                    state.nav.draw(v)
 
         if state.grid_nav == "row":
             for gy in range(state.grid.h):
@@ -308,7 +307,7 @@ class Mode:
                 l.x = state.zone.left() + 0.5 * state.zone.w / state.grid.w
                 l.y = state.zone.top() + (gy + 0.5) * state.zone.h / state.grid.h
                 l.text = str(grid_nav_chars[gy])
-                state.draw(l)
+                state.nav.draw(l)
 
         if state.grid_nav == "col":
             for gx in range(state.grid.w):
@@ -316,15 +315,15 @@ class Mode:
                 l.x = state.zone.left() + (gx + 0.5) * state.zone.w / state.grid.w
                 l.y = state.zone.top() + 0.5 * state.zone.h / state.grid.h
                 l.text = str(grid_nav_chars[gx])
-                state.draw(l)
+                state.nav.draw(l)
 
 
-        if enabled: state.vis.enable()
+        if enabled: state.nav.vis.enable()
 
         pass
 
     def enter(self, state):
-        self.prev_bindings = state.key_bindings()
+        self.prev_bindings = state.nav.key_bindings()
 
         for key, action in conf.items():
             def fn(action=action, state=state):
@@ -333,20 +332,20 @@ class Mode:
                 self.update(state)
 
             fn = annotate(fn, get_cmd(action))
-            state.register_key(key, fn)
+            state.nav.register_key(key, fn)
 
-        state.draw(state.zone)
+        state.nav.draw(state.zone)
         self.state = state
 
     def exit(self, state):
         for key, action in conf.items():
             if not start in action:
-                state.unregister_key(key)
+                state.nav.unregister_key(key)
 
         for key, action in self.prev_bindings.items():
-            state.register_key(key, action)
+            state.nav.register_key(key, action)
 
-        state.undraw()
+        state.nav.undraw()
 
 class Size:
     w = 0
@@ -354,22 +353,7 @@ class Size:
 
 class State:
     def __init__(self, nav):
-        # functions
-        self.move = nav.input.move
-        self.click = nav.input.click
-
-        self.register_key = nav.register_key
-        self.unregister_key = nav.unregister_key
-        self.key_bindings = nav.input.key_bindings
-        self.grab_keyboard = nav.input.grab_keyboard
-        self.ungrab_keyboard = nav.input.ungrab_keyboard
-
-        self.draw = nav.vis.draw
-        self.undraw = nav.vis.undraw
-        self.pointer = nav.input.pointer
-
         # references
-        self.vis = nav.vis
         self.nav = nav
 
         # info
@@ -390,8 +374,20 @@ class Navigator:
         self.vis = Drawing()
         self.input = Input()
 
+        # functions
+        self.move = self.input.move
+        self.click = self.input.click
+        self.pointer = self.input.pointer
+
         self.register_key = self.input.register_key
         self.unregister_key = self.input.unregister_key
+
+        self.key_bindings = self.input.key_bindings
+        self.grab_keyboard = self.input.grab_keyboard
+        self.ungrab_keyboard = self.input.ungrab_keyboard
+
+        self.draw = self.vis.draw
+        self.undraw = self.vis.undraw
 
         for key, action in conf.items():
             if start in action:
