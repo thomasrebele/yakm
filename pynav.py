@@ -84,11 +84,11 @@ def suspend(state):
 
 # exit current mode
 def exit_mode(state):
-    state.nav.exit_mode()
+    state.exit_mode()
 
 # exit all modes
 def end(state):
-    state.nav.exit_mode(all=True)
+    state.exit_mode(all=True)
 
 
 def clear(state):
@@ -181,7 +181,7 @@ def grid_nav(state):
     for i, c in enumerate(grid_nav_chars):
         state.nav.register_key(c, lambda state=state, i=i: row_select(i)(state))
 
-    state.nav.update_mode()
+    state.update()
 
 
 def row_select(y):
@@ -196,7 +196,7 @@ def row_select(y):
         for i, c in enumerate(grid_nav_chars):
             state.nav.register_key(c, lambda state=state, i=i: col_select(i)(state))
 
-        state.nav.update_mode()
+        state.update()
 
     return annotate(upd, "row_select " + str(y))
 
@@ -362,12 +362,38 @@ class State:
         self.screen.h = nav.input.h
 
         # state
+        self.mode = []
         self.zone = Zone()
         self.grid = Size()
         self.grid.w = 1
         self.grid.h = 1
         self.drag = False
         self.grid_nav = None # or "row", or "col"
+
+    def enter_mode(self, mode):
+        self.nav.vis.enable()
+        self.nav.grab_keyboard()
+
+        self.mode += [mode]
+        mode.enter(self)
+
+    def exit_mode(self, all=False):
+        while len(self.mode) > 0:
+            self.mode[-1].exit(self)
+            self.mode = self.mode[:-1]
+            if not all: break
+
+
+        if len(self.mode) == 0:
+            self.nav.vis.disable()
+            self.nav.vis.refresh()
+            self.nav.ungrab_keyboard()
+
+    def update(self):
+        if len(self.mode) > 0:
+            self.mode[-1].update(self)
+
+
 
 class Navigator:
     def __init__(self):
@@ -389,43 +415,20 @@ class Navigator:
         self.draw = self.vis.draw
         self.undraw = self.vis.undraw
 
+        self.state = State(self)
+
         for key, action in conf.items():
             if start in action:
                 def fn(self=self, action=action):
-                    self.enter_mode(Mode(conf))
+                    self.state.enter_mode(Mode(conf))
                     for act in action:
                         act(self.state)
 
                 self.input.register_key(key, fn, _global=True)
 
-        self.state = State(self)
-        self.mode = []
 
     def __del__(self):
         self.vis.stop()
-
-    def enter_mode(self, mode):
-        self.vis.enable()
-        self.input.grab_keyboard()
-
-        self.mode += [mode]
-        mode.enter(self.state)
-
-    def exit_mode(self, all=False):
-        while len(self.mode) > 0:
-            self.mode[-1].exit(self.state)
-            self.mode = self.mode[:-1]
-            if not all: break
-
-
-        if len(self.mode) == 0:
-            self.vis.disable()
-            self.vis.refresh()
-            self.input.ungrab_keyboard()
-
-    def update_mode(self):
-        if len(self.mode) > 0:
-            self.mode[-1].update(self.state)
 
 
 
