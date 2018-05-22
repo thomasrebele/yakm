@@ -137,20 +137,11 @@ class Input:
 
     def click(self, button, actions=["press", "release"]):
         key = {1: X.Button1, 2: X.Button2, 3: X.Button3, 4: X.Button4, 5: X.Button5}[button]
-        mod = X.NONE
 
-        window = root.query_pointer().child
-        try:
-            window.query_pointer()
-        except:
-            window = root
-
-        p = self.pointer()
         m = {
             "press": X.ButtonPress,
             "release":  X.ButtonRelease,
         }
-
 
         for act in actions:
             event = m[act]

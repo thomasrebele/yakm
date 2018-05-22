@@ -77,9 +77,16 @@ def start(state):
 
     state.grab_keyboard()
 
-def exit(state):
+# suspend current mode
+def suspend(state):
+    # TODO
+    pass
+
+# exit current mode
+def exit_mode(state):
     state.nav.exit_mode()
 
+# exit all modes
 def end(state):
     state.nav.exit_mode(all=True)
 
@@ -200,15 +207,19 @@ def col_select(x):
         state.zone.x = left + 0.5 * state.zone.w / state.grid.w
         state.zone.w /= state.grid.w
 
+        warp(state)
+
         state.grid_nav = None
-        state.nav.update_mode()
+
+        grid_nav(state)
+
 
     return annotate(upd, "col_select " + str(x))
 
 
 
 # annotate functions without arguments
-for i in [warp, start, clear, info, exit, end, grid_nav]:
+for i in [warp, start, clear, info, exit_mode, end, grid_nav]:
     i = annotate(i, i.__name__)
 
 
@@ -232,19 +243,18 @@ conf = {
     "shift+r": [drag(2)],
     "shift+t": [drag(3)],
 
-    "o" : [grid(3,3)],
     "h" : [cell_select(1,3)],
     "b" : [grid_nav],
 
     "k": [cursorzoom(342, 192)],
     "p": [enlarge(1.5)],
-    "ctrl+shift+7": [start],
-    "ctrl+shift+8": [start, cursorzoom(342, 192)],
+    "ctrl+shift+7": [start, grid(9,9), grid_nav],
+    "ctrl+shift+8": [start, cursorzoom(342, 192), grid(9,9), grid_nav],
     "x": [info],
     "ctrl+shift+i": [info],
     #"c": [clear],
 
-    "z": [exit],
+    "z": [exit_mode],
     "Escape": [end],
 }
 
@@ -418,7 +428,8 @@ class Navigator:
             self.input.ungrab_keyboard()
 
     def update_mode(self):
-        self.mode[-1].update(self.state)
+        if len(self.mode) > 0:
+            self.mode[-1].update(self.state)
 
 
 

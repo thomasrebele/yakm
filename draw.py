@@ -61,9 +61,19 @@ class Label(Action):
         height = info["font_ascent"] + info["font_descent"]
         shift_y = info["font_ascent"]
 
+        left = self.x - self.anchor_x * width
+        top = self.y - self.anchor_y * height
+
+        drawing.window.fill_rectangle(drawing.fill_gc,
+            int(left),
+            int(top),
+            int(width),
+            int(height)
+        )
+
         drawing.window.draw_text(drawing.gc,
-                int(self.x - self.anchor_x * width),
-                int(self.y + shift_y - self.anchor_y * height),
+                int(left),
+                int(top + shift_y),
                 self.text.encode()
         )
 
@@ -102,7 +112,7 @@ class Zone(Action):
 class Drawing:
     def __init__(self):
         self.d = display.Display()
-        font = self.d.open_font("-adobe-helvetica-*-r-normal-*-50-*-*-*-*-*-*-*")
+        font = self.d.open_font("-adobe-helvetica-*-r-normal-*-25-*-*-*-*-*-*-*")
         if font == None:
             font = self.d.open_font("-*-*-bold-r-normal--25-*-*-75-*-*-*-*")
 
@@ -120,6 +130,15 @@ class Drawing:
             subwindow_mode = X.IncludeInferiors,
             font = font,
         )
+
+        self.fill_gc = self.window.create_gc(
+            line_width = 4,
+            foreground = 0xffffff,
+            background = 0xffffff,
+            subwindow_mode = X.IncludeInferiors,
+            font = font,
+        )
+
 
         self.actions = {}
         self.event = threading.Event()
