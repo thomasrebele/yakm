@@ -400,7 +400,7 @@ class Navigator:
                     for act in action:
                         act(self.state)
 
-                self.input.register_key(key, fn)
+                self.input.register_key(key, fn, _global=True)
 
         self.state = State(self)
         self.mode = []

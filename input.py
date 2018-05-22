@@ -98,22 +98,26 @@ class Input:
     def key_bindings(self):
         return dict([(b.key, b.fn) for b in self.bindings.values()])
 
-    def register_key(self, key, fn):
+    def register_key(self, key, fn, _global=False):
         key_code, mod_mask = get_keycode(key)
-        grab_key(key_code, mod_mask)
+        if _global:
+            grab_key(key_code, mod_mask)
 
         binding = Binding()
         binding.key = key
         binding.fn = fn
+        binding._global = _global
         self.bindings[(key_code, mod_mask)] = binding
-
-    def grab_keyboard(self):
-        root.grab_keyboard(True, X.GrabModeAsync, X.GrabModeAsync,X.CurrentTime)
 
     def unregister_key(self, key):
         key_code, mod_mask = get_keycode(key)
-        ungrab_key(key_code, mod_mask)
+        binding = self.bindings[(key_code, mod_mask)]
+        if binding._global:
+            ungrab_key(key_code, mod_mask)
         del self.bindings[(key_code, mod_mask)]
+
+    def grab_keyboard(self):
+        root.grab_keyboard(True, X.GrabModeAsync, X.GrabModeAsync,X.CurrentTime)
 
     def ungrab_keyboard(self):
         disp.ungrab_keyboard(X.CurrentTime)
