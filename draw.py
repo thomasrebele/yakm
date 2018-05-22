@@ -88,6 +88,10 @@ class Zone(Action):
         self.w = 100
         self.h = 100
 
+    def __str__(self):
+        return "zone: " + str(self.x) + "," + str(self.y) + " size " + str(self.w) + "," + str(self.h)
+
+
     def draw(self, drawing):
         drawing.window.rectangle(drawing.gc,
             int(self.x-self.w/2),

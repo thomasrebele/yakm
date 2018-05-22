@@ -3,7 +3,7 @@
 
 from draw import *
 from time import sleep
-import sys
+import copy
 
 from input import *
 
@@ -216,10 +216,12 @@ def col_select(x):
 
     return annotate(upd, "col_select " + str(x))
 
+def history_back(state):
+    state.nav.undo()
 
 
 # annotate functions without arguments
-for i in [warp, start, clear, info, exit_mode, end, grid_nav]:
+for i in [warp, start, clear, info, exit_mode, end, grid_nav, history_back]:
     i = annotate(i, i.__name__)
 
 
@@ -250,10 +252,11 @@ conf = {
     "p": [enlarge(1.5)],
     "ctrl+shift+7": [start, grid(9,9), grid_nav],
     "ctrl+shift+8": [start, cursorzoom(342, 192), grid(9,9), grid_nav],
-    "x": [info],
+    "s": [info],
     "ctrl+shift+i": [info],
     #"c": [clear],
 
+    "o": [history_back],
     "z": [exit_mode],
     "Escape": [end],
 }
@@ -270,7 +273,7 @@ class Mode:
         self.conf = conf
         pass
 
-    def update(self, state):
+    def apply(self, state):
         # draw grid
         state.nav.undraw()
 
@@ -326,10 +329,13 @@ class Mode:
         self.prev_bindings = state.nav.key_bindings()
 
         for key, action in conf.items():
-            def fn(action=action, state=state):
+            # use state of navigation, so that we can undo actions
+            def fn(action=action, nav=state.nav):
                 for act in action:
-                    act(state)
-                self.update(state)
+                    act(nav.state)
+
+                if not history_back in action:
+                    nav.state.update()
 
             fn = annotate(fn, get_cmd(action))
             state.nav.register_key(key, fn)
@@ -348,8 +354,9 @@ class Mode:
         state.nav.undraw()
 
 class Size:
-    w = 0
-    h = 0
+    def __init__(self):
+        w = 0
+        h = 0
 
 class State:
     def __init__(self, nav):
@@ -370,6 +377,19 @@ class State:
         self.drag = False
         self.grid_nav = None # or "row", or "col"
 
+    def copy(self):
+        c = State(self.nav)
+        c.screen = self.screen
+        c.mode = self.mode[:]
+        c.zone = copy.copy(self.zone)
+        c.grid = copy.copy(self.grid)
+        c.drag = self.drag
+        c.grid_nav = self.grid_nav
+        return c
+
+    def __str__(self):
+        return "state: \n" + "  " + str(self.zone)
+
     def enter_mode(self, mode):
         self.nav.vis.enable()
         self.nav.grab_keyboard()
@@ -389,16 +409,24 @@ class State:
             self.nav.vis.refresh()
             self.nav.ungrab_keyboard()
 
-    def update(self):
+    def update(self, undoable=True):
         if len(self.mode) > 0:
-            self.mode[-1].update(self)
+            self.mode[-1].apply(self)
+
+        if undoable:
+            self.nav.do(self)
 
 
 
 class Navigator:
     def __init__(self):
+        # components
         self.vis = Drawing()
         self.input = Input()
+
+        # state
+        self.state = State(self)
+        self.history = []
 
         # functions
         self.move = self.input.move
@@ -415,7 +443,6 @@ class Navigator:
         self.draw = self.vis.draw
         self.undraw = self.vis.undraw
 
-        self.state = State(self)
 
         for key, action in conf.items():
             if start in action:
@@ -430,7 +457,26 @@ class Navigator:
     def __del__(self):
         self.vis.stop()
 
+    def do(self, state):
+        # TODO: only add if change, something like if len(self.history) == 0: state != self.history[-1]:
+        print()
+        print("--do step! zone " + str(self.state.zone))
+        self.history.append(state.copy())
+        for i in self.history:
+            print("    " + str(i.zone))
 
+
+    def undo(self):
+        if len(self.history) > 1:
+            print()
+            print("undo step! zone " + str(self.state.zone))
+            del self.history[-1]
+            self.state = self.history[-1].copy()
+            print("     after zone " + str(self.state.zone))
+
+            self.state.update(undoable=False)
+            for i in self.history:
+                print("    " + str(i.zone))
 
 
 if __name__ == '__main__':
@@ -438,10 +484,6 @@ if __name__ == '__main__':
 
     print("started ...")
 
-    try:
-        sleep(100)
-    except KeyboardInterrupt:
-        sys.exit()
 
 
 
