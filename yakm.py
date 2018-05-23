@@ -5,6 +5,10 @@ from draw import *
 from time import sleep
 import copy
 import string
+import json
+
+import pathlib
+from os.path import expanduser
 
 from input import *
 
@@ -39,11 +43,13 @@ def annotate(fn, cmd):
     return fn
 
 def get_cmd(x):
-    if type(x) == type(lambda: x):
+    if callable(x):
         try:
             return x.cmd
         except:
+            if not x.__name__: return str(x)
             return x.__name__
+
     if type(x) == list:
         cmds = [get_cmd(fn) for fn in x]
         return ", ".join(cmds)
@@ -243,6 +249,10 @@ for i in [warp, start, clear, info, exit_mode, end, grid_nav, history_back]:
 # configuration
 ################################################################################
 
+conf_dir = "~/.yakm/"
+
+conf_dir = expanduser(conf_dir)
+pathlib.Path(conf_dir).mkdir(parents=True, exist_ok=True)
 
 conf = {
     "u": [move_left(0.5), warp],
@@ -446,7 +456,13 @@ class GridMode(Mode):
 class MarkMode(Mode):
     def __init__(self, nav, conf, record = False):
         if not hasattr(nav, "mark"):
-            nav.mark = {"a": (40, 100), "b": (500, 700)}
+            # nav.mark = {"a": (40, 100), "b": (500, 700)}
+            nav.mark = {}
+            try:
+                with open(conf_dir + "marks", "r") as f:
+                    nav.mark = json.loads(f.read())
+            except FileNotFoundError:
+                pass
 
         conf = {}
         if record:
@@ -455,7 +471,7 @@ class MarkMode(Mode):
                 def register(state, key=key, mark=nav.mark):
                     mark[key] = (state.zone.x,state.zone.y)
                 register = annotate(register, "register '" + key + "'")
-                conf[key] = [register, exit_mode]
+                conf[key] = [register, self.save, exit_mode]
         else:
             for key, coord in nav.mark.items():
                 conf[key] = [move_to(coord[0], coord[1]), warp, exit_mode]
@@ -477,6 +493,11 @@ class MarkMode(Mode):
             state.nav.draw(l)
 
         if enabled: state.nav.vis.enable()
+
+    def save(self, state):
+        print("saving!")
+        with open(conf_dir + "marks", "w") as f:
+            f.write(json.dumps(self.nav.mark))
 
 
 
