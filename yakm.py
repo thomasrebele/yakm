@@ -155,6 +155,8 @@ def grid(w, h):
     def upd(state, w=w, h=h):
         state.grid.w = w
         state.grid.h = h
+        state.enter_mode(GridMode(conf))
+
     return annotate(upd, "grid " + str(w) + " " + str(h))
 
 def cell_select(x, y):
@@ -264,7 +266,7 @@ conf = {
 # QWERTY layout
 grid_nav_chars = ["q", "w", "e", "r", "t", "y", "u", "i", "i", "o", "p"]
 
-# QWERTZ layout
+# Neo2 layout
 grid_nav_chars = ["x", "v", "l", "c", "w", "k", "h", "g", "f", "q"]
 
 
@@ -272,6 +274,41 @@ class Mode:
     def __init__(self, conf):
         self.conf = conf
         pass
+
+    def apply(self, state):
+        state.nav.draw(state.zone)
+
+    def enter(self, state):
+        self.prev_bindings = state.nav.key_bindings()
+
+        for key, action in conf.items():
+            # use state of navigation, so that we can undo actions
+            def fn(action=action, nav=state.nav):
+                for act in action:
+                    act(nav.state)
+
+                if not history_back in action:
+                    nav.state.update()
+
+            fn = annotate(fn, get_cmd(action))
+            state.nav.register_key(key, fn)
+
+        state.nav.draw(state.zone)
+        self.state = state
+
+    def exit(self, state):
+        for key, action in conf.items():
+            if not start in action:
+                state.nav.unregister_key(key)
+
+        for key, action in self.prev_bindings.items():
+            state.nav.register_key(key, action)
+
+        state.nav.undraw()
+
+class GridMode(Mode):
+    def __init__(self, conf):
+        super().__init__(conf)
 
     def apply(self, state):
         # draw grid
@@ -323,35 +360,7 @@ class Mode:
 
         if enabled: state.nav.vis.enable()
 
-        pass
 
-    def enter(self, state):
-        self.prev_bindings = state.nav.key_bindings()
-
-        for key, action in conf.items():
-            # use state of navigation, so that we can undo actions
-            def fn(action=action, nav=state.nav):
-                for act in action:
-                    act(nav.state)
-
-                if not history_back in action:
-                    nav.state.update()
-
-            fn = annotate(fn, get_cmd(action))
-            state.nav.register_key(key, fn)
-
-        state.nav.draw(state.zone)
-        self.state = state
-
-    def exit(self, state):
-        for key, action in conf.items():
-            if not start in action:
-                state.nav.unregister_key(key)
-
-        for key, action in self.prev_bindings.items():
-            state.nav.register_key(key, action)
-
-        state.nav.undraw()
 
 class Size:
     def __init__(self):
