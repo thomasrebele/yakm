@@ -9,8 +9,14 @@ from Xlib.ext.xtest import fake_input
 
 key_mods = {
     "shift": X.ShiftMask,
-    "ctrl": X.ControlMask
+    "ctrl": X.ControlMask,
+    "mod1": X.Mod1Mask,
+    "mod2": X.Mod2Mask,
+    "mod3": X.Mod3Mask,
+    "mod4": X.Mod4Mask,
+    "mod5": X.Mod5Mask,
 }
+
 
 disp = Xlib.display.Display()
 screen = disp.screen()

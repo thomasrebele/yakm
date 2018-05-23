@@ -276,8 +276,10 @@ conf = {
 
     "k": [cursorzoom(342, 192)],
     "p": [enlarge(1.5)],
-    "ctrl+shift+h": [start, grid(9,9), grid_nav],
-    "ctrl+shift+g": [start, cursorzoom(342, 192), grid(9,9), grid_nav],
+    "mod4+a": [start, grid(9,9), grid_nav],
+    "mod4+e": [start, cursorzoom(342, 192), grid(9,9), grid_nav],
+    "mod4+shift+e": [start, apply_mark],
+
     "s": [info],
     "ctrl+shift+i": [info],
     #"c": [clear],
