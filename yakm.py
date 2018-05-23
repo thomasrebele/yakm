@@ -24,14 +24,14 @@ from input import *
 
 # grid 2x3
 # cell-select 1x3
+# history-back
+# clear: remove keybindings
 
 # todo
 
-# clear: remove keybindings
 # daemonize: execute in background
 # grid-nav off
 # grid-nav toggle
-# history-back
 
 def annotate(fn, cmd):
     fn.cmd = str(cmd)
@@ -250,8 +250,8 @@ conf = {
 
     "k": [cursorzoom(342, 192)],
     "p": [enlarge(1.5)],
-    "ctrl+shift+7": [start, grid(9,9), grid_nav],
-    "ctrl+shift+8": [start, cursorzoom(342, 192), grid(9,9), grid_nav],
+    "ctrl+shift+h": [start, grid(9,9), grid_nav],
+    "ctrl+shift+g": [start, cursorzoom(342, 192), grid(9,9), grid_nav],
     "s": [info],
     "ctrl+shift+i": [info],
     #"c": [clear],
