@@ -370,7 +370,6 @@ class Mode:
         state.nav.draw(state.zone)
 
     def enter(self, state):
-        print("enter " + str(self))
         self.prev_bindings = state.nav.key_bindings()
 
         for key, action in self.conf.items():
@@ -383,7 +382,6 @@ class Mode:
                     nav.state.update()
 
             fn = annotate(fn, get_cmd(action))
-            print("   register " + str(key) + " -> " + get_cmd(fn))
             state.nav.register_key(key, fn)
 
         state.nav.draw(state.zone)
@@ -543,24 +541,14 @@ class Navigator:
 
     def do(self, state):
         # TODO: only add if change, something like if len(self.history) == 0: state != self.history[-1]:
-        print()
-        print("--do step! zone " + str(self.state.zone))
         self.history.append(state.copy())
-        for i in self.history:
-            print("    " + str(i.zone))
 
 
     def undo(self):
         if len(self.history) > 1:
-            print()
-            print("undo step! zone " + str(self.state.zone))
             del self.history[-1]
             self.state = self.history[-1].copy()
-            print("     after zone " + str(self.state.zone))
-
             self.state.update(undoable=False)
-            for i in self.history:
-                print("    " + str(i.zone))
 
 
 if __name__ == '__main__':
