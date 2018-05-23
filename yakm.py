@@ -237,10 +237,10 @@ def history_back(state):
     state.nav.undo()
 
 def record_mark(state):
-    state.enter_mode(MarkMode(state.nav, conf, record=True))
+    state.enter_mode(MemoizedMarkMode(state.nav, record=True))
 
 def apply_mark(state):
-    state.enter_mode(MarkMode(state.nav, conf))
+    state.enter_mode(MemoizedMarkMode(state.nav))
 
 
 # annotate functions without arguments
@@ -482,8 +482,33 @@ class GridMode(Mode):
         if enabled: state.nav.vis.enable()
 
 class MarkMode(Mode):
-    def __init__(self, nav, conf, record = False):
-        marks = nav.state.settings(self)
+    def __init__(self, nav, conf):
+        super().__init__(nav, conf)
+
+    def marks(self):
+        return self.nav.state.settings(self)
+
+    def apply(self, state):
+        # draw grid
+        state.nav.undraw()
+        enabled = state.nav.vis.active
+        state.nav.vis.disable()
+
+        for key, coord in self.marks().items():
+            l = Label()
+            l.x = coord[0]
+            l.y = coord[1]
+            l.text = key
+            state.nav.draw(l)
+
+        if enabled: state.nav.vis.enable()
+
+class MemoizedMarkMode(MarkMode):
+
+    def __init__(self, nav, record = False):
+        self.nav = nav
+        marks = self.marks()
+
         if len(marks) == 0:
             try:
                 with open(conf_dir + "marks", "r") as f:
@@ -505,31 +530,15 @@ class MarkMode(Mode):
                 conf[key] = [move_to(coord[0], coord[1]), warp, exit_mode]
 
         super().__init__(nav, conf)
-
-    def marks(self):
-        return self.nav.state.settings(self)
-
-    def apply(self, state):
-        # draw grid
-        state.nav.undraw()
-        enabled = state.nav.vis.active
-        state.nav.vis.disable()
-
-        for key, coord in self.marks().items():
-            l = Label()
-            l.x = coord[0]
-            l.y = coord[1]
-            l.text = key
-            state.nav.draw(l)
-
-        if enabled: state.nav.vis.enable()
+        print(self.nav)
 
     def save(self, state):
         print("saving!")
         with open(conf_dir + "marks", "w") as f:
             f.write(json.dumps(self.marks()))
 
-
+class FixedMarkMode(MarkMode):
+    pass
 
 
 class Navigator:
