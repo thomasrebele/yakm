@@ -1,11 +1,11 @@
-from Xlib import X, display, Xutil
-import Xlib as xlib
-from time import sleep
-
-from subprocess import call
 
 import traceback
 import threading
+from time import sleep
+from subprocess import call
+
+from Xlib import X, display, Xutil
+import Xlib as xlib
 
 class Action:
     def draw(self):
@@ -53,27 +53,29 @@ class Label(Action):
         self.anchor_y = 0.5
         self.text = "<label>"
 
-    def draw(self, drawing):
-        # coordinates are bottom left corner of text
-
+    def size(self, drawing):
         info = drawing.gc.query_text_extents(self.text.encode())._data
-        width = info["overall_width"]
-        height = info["font_ascent"] + info["font_descent"]
-        shift_y = info["font_ascent"]
+        self.width = info["overall_width"]
+        self.height = info["font_ascent"] + info["font_descent"]
+        self.shift_y = info["font_ascent"]
+        return (self.width, self.height)
 
-        left = self.x - self.anchor_x * width
-        top = self.y - self.anchor_y * height
+    def draw(self, drawing):
+        self.size(drawing)
+        # coordinates are bottom left corner of text
+        left = self.x - self.anchor_x * self.width
+        top = self.y - self.anchor_y * self.height
 
         drawing.window.fill_rectangle(drawing.fill_gc,
             int(left),
             int(top),
-            int(width),
-            int(height)
+            int(self.width),
+            int(self.height)
         )
 
         drawing.window.draw_text(drawing.gc,
                 int(left),
-                int(top + shift_y),
+                int(top + self.shift_y),
                 self.text.encode()
         )
 
@@ -128,7 +130,7 @@ class Drawing:
         bg = 0x00ff00
 
         self.gc = self.window.create_gc(
-            line_width = 4,
+            line_width = 2,
             foreground = fg,
             background = bg,
             subwindow_mode = X.IncludeInferiors,

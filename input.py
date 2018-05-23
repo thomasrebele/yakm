@@ -1,7 +1,8 @@
 
-from time import sleep
 
+import traceback
 import threading
+from time import sleep
 
 import Xlib
 from Xlib import X, XK
@@ -78,22 +79,28 @@ class Input:
 
     def handle_event(self, evt):
         #print(evt)
-        if evt.type == X.KeyPress:
-            key_code = evt.detail
-            mod = evt.state & ~(X.LockMask | X.Mod2Mask | X.Button1Mask | X.Button2Mask | X.Button3Mask | X.Button4Mask | X.Button5Mask) # todo
-            # pressed_key =  get_keysym(evt.detail)
-            # print("pressed " + pressed_key)
+        try:
+            if evt.type == X.KeyPress:
+                key_code = evt.detail
+                mod = evt.state & ~(X.LockMask | X.Mod2Mask | X.Button1Mask | X.Button2Mask | X.Button3Mask | X.Button4Mask | X.Button5Mask) # todo
+                # pressed_key =  get_keysym(evt.detail)
+                # print("pressed " + pressed_key)
 
-            k = (key_code, mod)
-            if k in self.bindings:
-                self.bindings[k].fn()
-            else:
-                print("unbound key " + str(key_code))
+                k = (key_code, mod)
+                if k in self.bindings:
+                    self.bindings[k].fn()
+                else:
+                    print("unbound key " + str(key_code))
 
 
-        elif evt.type == X.KeyRelease:
-            #print("\nrelease: " + str(evt) + "\n")
-            pass
+            elif evt.type == X.KeyRelease:
+                #print("\nrelease: " + str(evt) + "\n")
+                pass
+        except Exception as e:
+            traceback.print_exc()
+            self.ungrab_keyboard()
+            for k in self.key_bindings():
+                self.unregister_key(k)
 
     def event_loop(self):
         while self.active:
@@ -145,6 +152,13 @@ class Input:
         p = Coord()
         p.x, p.y = x, y
         return p
+
+    def window(self):
+        win = root.query_pointer().child or root
+        print(dir(win))
+        print(win.get_wm_client_machine())
+        print(win.get_wm_class())
+        return {"name": win.get_wm_name()}
 
 
     def click(self, button, actions=["press", "release"]):

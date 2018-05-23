@@ -107,6 +107,9 @@ def info(state):
     print("bindings:")
     for key, action in state.nav.key_bindings().items():
         print("    key " + str(key) + " -> " + str(get_cmd(action)))
+    win = state.nav.input.window()
+    print("focused window: " + str(win))
+
 
 def ignore(state):
     pass
@@ -203,7 +206,7 @@ def row_select(y):
         print("selecting row " +str(y))
         top = state.zone.top() + y / state.grid.h  * state.zone.h
         state.zone.y = top + 0.5 * state.zone.h / state.grid.h
-        state.zone.h /= state.grid.h
+        state.zone.h = max(state.grid.h, state.zone.h / state.grid.h)
 
         # prepare for selecting cols
         state.grid_nav = "col"
@@ -219,7 +222,7 @@ def col_select(x):
         print("selecting col " +str(x))
         left = state.zone.left() + x / state.grid.w  * state.zone.w
         state.zone.x = left + 0.5 * state.zone.w / state.grid.w
-        state.zone.w /= state.grid.w
+        state.zone.w = max(state.grid.w, state.zone.w / state.grid.w)
 
         warp(state)
 
@@ -410,44 +413,58 @@ class GridMode(Mode):
         enabled = state.nav.vis.active
         state.nav.vis.disable()
 
-        print("grid nav " + str(state.grid_nav))
+        # draw horizontal lines
+        for gy, first_y, last_y in iter_first_last(range(state.grid.h+1)):
+            # avoid drawing lines in grid if grid is very small
+            horizontal_until_x = state.zone.right()
+            if state.zone.w < state.grid.w * 30 and not first_y and not last_y:
+                horizontal_until_x = state.zone.left() - 10
 
+            if first_y or last_y or state.grid_nav == None or state.grid_nav == "row":
+                h = Line()
+                h.x1 = state.zone.left()
+                h.x2 = horizontal_until_x
+
+                h.y1 = state.zone.top() + gy * state.zone.h / state.grid.h
+                h.y2 = h.y1
+                state.nav.draw(h)
+
+        # draw vertical lines
         for gx, first_x, last_x in iter_first_last(range(state.grid.w+1)):
-            for gy, first_y, last_y in iter_first_last(range(state.grid.h+1)):
-                if first_y or last_y or state.grid_nav == None or state.grid_nav == "row":
-                    # horizontal
-                    h = Line()
-                    h.x1 = state.zone.left() + gx * state.zone.w / state.grid.w
-                    h.x2 = state.zone.right()
+            # avoid drawing lines in grid if grid is very small
+            vertical_until_y = state.zone.bottom()
+            if state.zone.h < state.grid.h * 30 and not first_x and not last_x:
+                vertical_until_y = state.zone.top() - 10
 
-                    h.y1 = state.zone.top() + gy * state.zone.h / state.grid.h
-                    h.y2 = h.y1
-                    state.nav.draw(h)
+            if first_x or last_x or state.grid_nav == None or state.grid_nav == "col":
+                v = Line()
+                v.x1 = state.zone.left() + gx * state.zone.w / state.grid.w
+                v.x2 = v.x1
 
-                if first_x or last_x or state.grid_nav == None or state.grid_nav == "col":
-                    # vertical
-                    v = Line()
-                    v.x1 = state.zone.left() + gx * state.zone.w / state.grid.w
-                    v.x2 = v.x1
-
-                    v.y1 = state.zone.top() + gy * state.zone.h / state.grid.h
-                    v.y2 = state.zone.bottom()
-                    state.nav.draw(v)
+                v.y1 = state.zone.top()
+                v.y2 = vertical_until_y
+                state.nav.draw(v)
 
         if state.grid_nav == "row":
+            delta = state.zone.h / state.grid.h
             for gy in range(state.grid.h):
                 l = Label()
                 l.x = state.zone.left() + 0.5 * state.zone.w / state.grid.w
-                l.y = state.zone.top() + (gy + 0.5) * state.zone.h / state.grid.h
+                l.y = state.zone.top() + (gy + 0.5) * delta
                 l.text = str(grid_nav_chars[gy])
+
+                if l.size(state.nav.vis)[1] > delta: break
                 state.nav.draw(l)
 
         if state.grid_nav == "col":
+            delta = state.zone.w / state.grid.w
             for gx in range(state.grid.w):
                 l = Label()
-                l.x = state.zone.left() + (gx + 0.5) * state.zone.w / state.grid.w
+                l.x = state.zone.left() + (gx + 0.5) * delta
                 l.y = state.zone.top() + 0.5 * state.zone.h / state.grid.h
                 l.text = str(grid_nav_chars[gx])
+
+                if l.size(state.nav.vis)[0] > delta: break
                 state.nav.draw(l)
 
 
