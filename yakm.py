@@ -390,10 +390,13 @@ class State:
         c = State(self.nav)
         c.screen = self.screen
         c.mode = self.mode[:]
-        c.zone = copy.copy(self.zone)
-        c.grid = copy.copy(self.grid)
-        c.drag = self.drag
-        c.grid_nav = self.grid_nav
+        exclude = set(dir(State))
+        exclude.update(["nav", "screen", "mode"])
+
+        for attr in dir(self):
+            if attr in exclude: continue
+            setattr(c, attr, copy.deepcopy(getattr(self, attr)))
+
         return c
 
     def __str__(self):
