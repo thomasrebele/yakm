@@ -364,6 +364,17 @@ class State:
         if undoable:
             self.nav.do(self)
 
+    # save settings for class
+    def settings(self, inst):
+        if not hasattr(self, "_settings"):
+            self._settings = {}
+
+        name = inst.__class__.__name__
+        if not name in self._settings:
+            self._settings[name] = {}
+
+        return self._settings[name]
+
 
 class Mode:
     def __init__(self, nav, conf):
@@ -472,12 +483,11 @@ class GridMode(Mode):
 
 class MarkMode(Mode):
     def __init__(self, nav, conf, record = False):
-        if not hasattr(nav, "mark"):
-            # nav.mark = {"a": (40, 100), "b": (500, 700)}
-            nav.mark = {}
+        marks = nav.state.settings(self)
+        if len(marks) == 0:
             try:
                 with open(conf_dir + "marks", "r") as f:
-                    nav.mark = json.loads(f.read())
+                    marks.update(json.loads(f.read()))
             except FileNotFoundError:
                 pass
 
@@ -485,16 +495,19 @@ class MarkMode(Mode):
         if record:
             # currently only alphabetic marks
             for key in list(string.ascii_lowercase):
-                def register(state, key=key, mark=nav.mark):
-                    mark[key] = (state.zone.x,state.zone.y)
+                def register(state, key=key):
+                    marks = nav.state.settings(self)
+                    marks[key] = (state.zone.x,state.zone.y)
                 register = annotate(register, "register '" + key + "'")
                 conf[key] = [register, self.save, exit_mode]
         else:
-            for key, coord in nav.mark.items():
+            for key, coord in marks.items():
                 conf[key] = [move_to(coord[0], coord[1]), warp, exit_mode]
 
         super().__init__(nav, conf)
 
+    def marks(self):
+        return self.nav.state.settings(self)
 
     def apply(self, state):
         # draw grid
@@ -502,7 +515,7 @@ class MarkMode(Mode):
         enabled = state.nav.vis.active
         state.nav.vis.disable()
 
-        for key, coord in self.nav.mark.items():
+        for key, coord in self.marks().items():
             l = Label()
             l.x = coord[0]
             l.y = coord[1]
@@ -514,7 +527,7 @@ class MarkMode(Mode):
     def save(self, state):
         print("saving!")
         with open(conf_dir + "marks", "w") as f:
-            f.write(json.dumps(self.nav.mark))
+            f.write(json.dumps(self.marks()))
 
 
 
