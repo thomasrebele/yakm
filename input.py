@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 
 
 import traceback
@@ -5,6 +6,7 @@ import threading
 from time import sleep
 
 import Xlib
+from Xlib import display
 from Xlib import X, XK
 from Xlib.ext.xtest import fake_input
 
@@ -18,6 +20,8 @@ key_mods = {
     "mod5": X.Mod5Mask,
 }
 
+mods = ["mod1", "mod2", "mod3", "mod4", "mod5", "ctrl", "shift"]
+
 keys_to_code = {
     '&':'ampersand', '\'':'apostrophe', '^':'asciicircum', '~':'asciitilde',
     '*':'asterisk', '@':'at', '\\':'backslash', '|':'bar', '\b':'BackSpace',
@@ -29,7 +33,6 @@ keys_to_code = {
     ';':'semicolon', '/':'slash', ' ':'space', '\t':'Tab', '_':'underscore',
     'ü':'udiaeresis', 'ö':'odiaeresis', 'ä':'adiaeresis'
 }
-
 
 disp = Xlib.display.Display()
 screen = disp.screen()
@@ -48,12 +51,36 @@ def get_keycode(key):
             key = p
 
     key_sym = XK.string_to_keysym(keys_to_code.get(key, key))
+    print("keysym of " + str(key) + " is " + str(key_sym))
     return disp.keysym_to_keycode(key_sym), mod
 
 def get_keysym(key_code):
     key_sym = disp.keycode_to_keysym(key_code, 0)
     return XK.keysym_to_string(key_sym)
 
+def get_key(keysym):
+    for name in dir(XK):
+        if name[:3] == "XK_":
+            print("checking " + str(name) + " " + str(keysym) + " " + str(getattr(XK, name)))
+            if getattr(XK, name) == keysym:
+                return name[3:]
+    return "[%d]" % keysym
+
+def normalize_keycode(keycode, mod):
+    r = [m for m in mods if mod & key_mods[m] == key_mods[m]]
+    print("keycode: " + str(keycode))
+    r += [get_key(keycode)]
+    print(r)
+    return "+".join(r)
+
+def normalize_key(key):
+    keycode, mod = get_keycode(key)
+    return normalize_keycode(keycode, mod)
+
+
+for i in ["a", "escape"]:
+    print(i)
+    print(normalize_key(i))
 
 
 def ignore_mod(mods=[X.LockMask, X.Mod2Mask], mod=0):
@@ -104,6 +131,9 @@ class Input:
                 else:
                     print("unbound key " + str(key_code))
 
+                    if hasattr(self, "callback"):
+                        self.callback(normalize_keycode(key_code, mod))
+
 
             elif evt.type == X.KeyRelease:
                 #print("\nrelease: " + str(evt) + "\n")
@@ -124,6 +154,9 @@ class Input:
 
     def key_bindings(self):
         return dict([(b.key, b.fn) for b in self.bindings.values()])
+
+    def register_callback(self, callback):
+        self.callback = callback
 
     def register_key(self, key, fn, _global=False):
         key_code, mod_mask = get_keycode(key)

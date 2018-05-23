@@ -170,7 +170,7 @@ def grid(w, h):
     def upd(state, w=w, h=h):
         state.grid.w = w
         state.grid.h = h
-        state.enter_mode(GridMode(state.nav, conf))
+        state.enter_mode(GridMode(state.nav))
 
     return annotate(upd, "grid " + str(w) + " " + str(h))
 
@@ -194,13 +194,7 @@ def cell_select(x, y):
 
 # grid navigation
 def grid_nav(state):
-    global grid_nav_chars
-
-    # prepare for selecting rows
     state.grid_nav = "row"
-    for i, c in enumerate(grid_nav_chars):
-        state.nav.register_key(c, lambda state=state, i=i: row_select(i)(state))
-
     state.update()
 
 
@@ -213,9 +207,6 @@ def row_select(y):
 
         # prepare for selecting cols
         state.grid_nav = "col"
-        for i, c in enumerate(grid_nav_chars):
-            state.nav.register_key(c, lambda state=state, i=i: col_select(i)(state))
-
         state.update()
 
     return annotate(upd, "row_select " + str(y))
@@ -228,9 +219,7 @@ def col_select(x):
         state.zone.w = max(state.grid.w, state.zone.w / state.grid.w)
 
         warp(state)
-
         state.grid_nav = None
-
         grid_nav(state)
 
 
@@ -421,37 +410,29 @@ class Mode:
         state.nav.draw(state.zone)
 
     def enter(self, state):
-        self.prev_bindings = state.nav.key_bindings()
-
-        for key, action in self.conf.items():
-            # use state of navigation, so that we can undo actions
-            def fn(action=action, nav=state.nav):
-                for act in action:
-                    act(nav.state)
-
-                if not history_back in action:
-                    nav.state.update()
-
-            fn = annotate(fn, get_cmd(action))
-            state.nav.register_key(key, fn)
-
         state.nav.draw(state.zone)
+        # TODO: remove
         self.state = state
 
     def exit(self, state):
-        for key, action in conf.items():
-            if not start in action:
-                state.nav.unregister_key(key)
-
-        for key, action in self.prev_bindings.items():
-            state.nav.register_key(key, action)
-
         state.nav.undraw()
+
+    def key_event(self, key):
+        print("received key " + str(key))
+        if key in self.conf:
+            for action in self.conf[key]:
+                action(self.nav.state)
+
+            if not history_back in self.conf[key]:
+                self.nav.state.update()
+
+        return key in self.conf
+
 
 
 class GridMode(Mode):
-    def __init__(self, nav, conf):
-        super().__init__(nav, conf)
+    def __init__(self, nav):
+        super().__init__(nav, {})
 
     def apply(self, state):
         # draw grid
@@ -605,7 +586,7 @@ class Navigator:
         self.draw = self.vis.draw
         self.undraw = self.vis.undraw
 
-
+        # register hotkeys for starting yakm
         for key, action in conf.items():
             if start in action:
                 def fn(self=self, action=action):
@@ -615,6 +596,13 @@ class Navigator:
 
                 self.input.register_key(key, fn, _global=True)
 
+        self.input.register_callback(self.key_event)
+
+
+    def key_event(self, key):
+        for mode in self.state.mode:
+            if mode.key_event(key):
+                break
 
     def __del__(self):
         self.vis.stop()
