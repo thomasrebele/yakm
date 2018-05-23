@@ -52,11 +52,12 @@ class Label(Action):
         self.anchor_x = 0.5
         self.anchor_y = 0.5
         self.text = "<label>"
+        self.padding = 2
 
     def size(self, drawing):
         info = drawing.gc.query_text_extents(self.text.encode())._data
-        self.width = info["overall_width"]
-        self.height = info["font_ascent"] + info["font_descent"]
+        self.width = info["overall_width"] + 2 * self.padding
+        self.height = info["font_ascent"] + info["font_descent"] + 2 * self.padding
         self.shift_y = info["font_ascent"]
         return (self.width, self.height)
 
@@ -74,8 +75,8 @@ class Label(Action):
         )
 
         drawing.window.draw_text(drawing.gc,
-                int(left),
-                int(top + self.shift_y),
+                int(left + self.padding),
+                int(top + self.shift_y + self.padding),
                 self.text.encode()
         )
 
