@@ -247,12 +247,8 @@ def dart_nav(state):
 
     # prepare for selecting rows
     state.grid_nav = "dart"
-    for y, row in enumerate(dart_nav_chars):
-        for x, key in enumerate(row):
-            # uggly hack
-            state.nav.register_key(key, lambda state=state, x=x, y=y: cell_select(x,y)(state.nav.state))
 
-    state.nav.register_key("Escape", lambda state=state: exit_mode(state.nav.state))
+
     state.update()
 
 
@@ -527,7 +523,18 @@ class GridMode(Mode):
                         l.text = str(dart_nav_chars[gy][gx])
                         state.nav.draw(l)
 
-        if enabled: state.nav.vis.enable()
+        if enabled:
+            # TODO: treat this in a better way
+            if state.grid_nav == "dart":
+                for y, row in enumerate(dart_nav_chars):
+                    for x, key in enumerate(row):
+                        # uggly hack
+                        state.nav.register_key(key, lambda state=state, x=x, y=y: cell_select(x,y)(state.nav.state))
+
+                # TODO: treat keybindings more nicely
+                state.nav.register_key("Escape", lambda state=state: exit_mode(state.nav.state))
+
+            state.nav.vis.enable()
 
 class MarkMode(Mode):
     def __init__(self, nav, conf, record = False):
