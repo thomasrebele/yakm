@@ -81,6 +81,8 @@ class Input:
             k = (key_code, mod)
             if k in self.bindings:
                 self.bindings[k].fn()
+            else:
+                print("unbound key " + str(key_code))
 
 
         elif evt.type == X.KeyRelease:

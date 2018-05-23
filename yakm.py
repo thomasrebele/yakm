@@ -4,6 +4,7 @@
 from draw import *
 from time import sleep
 import copy
+import string
 
 from input import *
 
@@ -115,6 +116,11 @@ def drag(button):
         state.nav.click(button, actions=actions)
     return annotate(upd, "drag " + str(button))
 
+def move_to(x, y):
+    def upd(state, x=x, y=y):
+        state.zone.x = x
+        state.zone.y = y
+    return annotate(upd, "move_to " + str(x) + " " + str(y))
 
 def move_left(ratio):
     def upd(state, ratio=ratio):
@@ -155,7 +161,7 @@ def grid(w, h):
     def upd(state, w=w, h=h):
         state.grid.w = w
         state.grid.h = h
-        state.enter_mode(GridMode(conf))
+        state.enter_mode(GridMode(state.nav, conf))
 
     return annotate(upd, "grid " + str(w) + " " + str(h))
 
@@ -221,6 +227,12 @@ def col_select(x):
 def history_back(state):
     state.nav.undo()
 
+def record_mark(state):
+    state.enter_mode(MarkMode(state.nav, conf, record=True))
+
+def apply_mark(state):
+    state.enter_mode(MarkMode(state.nav, conf))
+
 
 # annotate functions without arguments
 for i in [warp, start, clear, info, exit_mode, end, grid_nav, history_back]:
@@ -249,6 +261,8 @@ conf = {
 
     "h" : [cell_select(1,3)],
     "b" : [grid_nav],
+    "m" : [record_mark],
+    "period" : [apply_mark],
 
     "k": [cursorzoom(342, 192)],
     "p": [enlarge(1.5)],
@@ -337,7 +351,8 @@ class State:
 
 
 class Mode:
-    def __init__(self, conf):
+    def __init__(self, nav, conf):
+        self.nav = nav
         self.conf = conf
         pass
 
@@ -345,9 +360,10 @@ class Mode:
         state.nav.draw(state.zone)
 
     def enter(self, state):
+        print("enter " + str(self))
         self.prev_bindings = state.nav.key_bindings()
 
-        for key, action in conf.items():
+        for key, action in self.conf.items():
             # use state of navigation, so that we can undo actions
             def fn(action=action, nav=state.nav):
                 for act in action:
@@ -357,6 +373,7 @@ class Mode:
                     nav.state.update()
 
             fn = annotate(fn, get_cmd(action))
+            print("   register " + str(key) + " -> " + get_cmd(fn))
             state.nav.register_key(key, fn)
 
         state.nav.draw(state.zone)
@@ -374,13 +391,12 @@ class Mode:
 
 
 class GridMode(Mode):
-    def __init__(self, conf):
-        super().__init__(conf)
+    def __init__(self, nav, conf):
+        super().__init__(nav, conf)
 
     def apply(self, state):
         # draw grid
         state.nav.undraw()
-
         enabled = state.nav.vis.active
         state.nav.vis.disable()
 
@@ -427,6 +443,41 @@ class GridMode(Mode):
 
         if enabled: state.nav.vis.enable()
 
+class MarkMode(Mode):
+    def __init__(self, nav, conf, record = False):
+        if not hasattr(nav, "mark"):
+            nav.mark = {"a": (40, 100), "b": (500, 700)}
+
+        conf = {}
+        if record:
+            # currently only alphabetic marks
+            for key in list(string.ascii_lowercase):
+                def register(state, key=key, mark=nav.mark):
+                    mark[key] = (state.zone.x,state.zone.y)
+                register = annotate(register, "register '" + key + "'")
+                conf[key] = [register, exit_mode]
+        else:
+            for key, coord in nav.mark.items():
+                conf[key] = [move_to(coord[0], coord[1]), warp, exit_mode]
+
+        super().__init__(nav, conf)
+
+
+    def apply(self, state):
+        # draw grid
+        state.nav.undraw()
+        enabled = state.nav.vis.active
+        state.nav.vis.disable()
+
+        for key, coord in self.nav.mark.items():
+            l = Label()
+            l.x = coord[0]
+            l.y = coord[1]
+            l.text = key
+            state.nav.draw(l)
+
+        if enabled: state.nav.vis.enable()
+
 
 
 
@@ -459,7 +510,7 @@ class Navigator:
         for key, action in conf.items():
             if start in action:
                 def fn(self=self, action=action):
-                    self.state.enter_mode(Mode(conf))
+                    self.state.enter_mode(Mode(self, conf))
                     for act in action:
                         act(self.state)
 
