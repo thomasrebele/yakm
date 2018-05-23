@@ -270,6 +270,72 @@ grid_nav_chars = ["q", "w", "e", "r", "t", "y", "u", "i", "i", "o", "p"]
 grid_nav_chars = ["x", "v", "l", "c", "w", "k", "h", "g", "f", "q"]
 
 
+class Size:
+    def __init__(self):
+        w = 0
+        h = 0
+
+class State:
+    def __init__(self, nav):
+        # references
+        self.nav = nav
+
+        # info
+        self.screen = Size()
+        self.screen.w = nav.input.w
+        self.screen.h = nav.input.h
+
+        # state
+        self.mode = []
+        self.zone = Zone()
+        self.grid = Size()
+        self.grid.w = 1
+        self.grid.h = 1
+        self.drag = False
+        self.grid_nav = None # or "row", or "col"
+
+    def copy(self):
+        c = State(self.nav)
+        c.screen = self.screen
+        c.mode = self.mode[:]
+        exclude = set(dir(State))
+        exclude.update(["nav", "screen", "mode"])
+
+        for attr in dir(self):
+            if attr in exclude: continue
+            setattr(c, attr, copy.deepcopy(getattr(self, attr)))
+        return c
+
+    def __str__(self):
+        return "state: \n" + "  " + str(self.zone)
+
+    def enter_mode(self, mode):
+        self.nav.vis.enable()
+        self.nav.grab_keyboard()
+
+        self.mode += [mode]
+        mode.enter(self)
+
+    def exit_mode(self, all=False):
+        while len(self.mode) > 0:
+            self.mode[-1].exit(self)
+            self.mode = self.mode[:-1]
+            if not all: break
+
+
+        if len(self.mode) == 0:
+            self.nav.vis.disable()
+            self.nav.vis.refresh()
+            self.nav.ungrab_keyboard()
+
+    def update(self, undoable=True):
+        if len(self.mode) > 0:
+            self.mode[-1].apply(self)
+
+        if undoable:
+            self.nav.do(self)
+
+
 class Mode:
     def __init__(self, conf):
         self.conf = conf
@@ -305,6 +371,7 @@ class Mode:
             state.nav.register_key(key, action)
 
         state.nav.undraw()
+
 
 class GridMode(Mode):
     def __init__(self, conf):
@@ -360,73 +427,6 @@ class GridMode(Mode):
 
         if enabled: state.nav.vis.enable()
 
-
-
-class Size:
-    def __init__(self):
-        w = 0
-        h = 0
-
-class State:
-    def __init__(self, nav):
-        # references
-        self.nav = nav
-
-        # info
-        self.screen = Size()
-        self.screen.w = nav.input.w
-        self.screen.h = nav.input.h
-
-        # state
-        self.mode = []
-        self.zone = Zone()
-        self.grid = Size()
-        self.grid.w = 1
-        self.grid.h = 1
-        self.drag = False
-        self.grid_nav = None # or "row", or "col"
-
-    def copy(self):
-        c = State(self.nav)
-        c.screen = self.screen
-        c.mode = self.mode[:]
-        exclude = set(dir(State))
-        exclude.update(["nav", "screen", "mode"])
-
-        for attr in dir(self):
-            if attr in exclude: continue
-            setattr(c, attr, copy.deepcopy(getattr(self, attr)))
-
-        return c
-
-    def __str__(self):
-        return "state: \n" + "  " + str(self.zone)
-
-    def enter_mode(self, mode):
-        self.nav.vis.enable()
-        self.nav.grab_keyboard()
-
-        self.mode += [mode]
-        mode.enter(self)
-
-    def exit_mode(self, all=False):
-        while len(self.mode) > 0:
-            self.mode[-1].exit(self)
-            self.mode = self.mode[:-1]
-            if not all: break
-
-
-        if len(self.mode) == 0:
-            self.nav.vis.disable()
-            self.nav.vis.refresh()
-            self.nav.ungrab_keyboard()
-
-    def update(self, undoable=True):
-        if len(self.mode) > 0:
-            self.mode[-1].apply(self)
-
-        if undoable:
-            self.nav.do(self)
 
 
 
