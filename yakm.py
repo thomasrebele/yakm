@@ -175,17 +175,20 @@ def grid(w, h):
     return annotate(upd, "grid " + str(w) + " " + str(h))
 
 def cell_select(x, y):
-    def upd(state, x=x-1, y=y-1):
+    def upd(state, x=x, y=y):
+        print(state)
         if x > state.grid.w or y > state.grid.h:
             return
 
         left = state.zone.left() + x / state.grid.w  * state.zone.w
         top = state.zone.top() + y / state.grid.h  * state.zone.h
 
-        state.zone.w = state.zone.w / state.grid.w
-        state.zone.h = state.zone.h / state.grid.h
+        state.zone.w = max(state.grid.w, state.zone.w / state.grid.w)
+        state.zone.h = max(state.grid.h, state.zone.h / state.grid.h)
         state.zone.x = left + state.zone.w/2
         state.zone.y = top + state.zone.h/2
+
+        state.update()
 
     return annotate(upd, "cell_select " + str(x) + " " + str(y))
 
@@ -233,6 +236,27 @@ def col_select(x):
 
     return annotate(upd, "col_select " + str(x))
 
+# dart navigation
+def dart_nav(state):
+    global dart_nav_chars
+
+    # switch to grid mode
+    w = len(dart_nav_chars[0])
+    h = len(dart_nav_chars)
+    grid(w,h)(state)
+
+    # prepare for selecting rows
+    state.grid_nav = "dart"
+    for y, row in enumerate(dart_nav_chars):
+        for x, key in enumerate(row):
+            # uggly hack
+            state.nav.register_key(key, lambda state=state, x=x, y=y: cell_select(x,y)(state.nav.state))
+
+    state.nav.register_key("Escape", lambda state=state: exit_mode(state))
+    state.update()
+
+
+
 def history_back(state):
     state.nav.undo()
 
@@ -272,7 +296,7 @@ conf = {
     "shift+r": [drag(2)],
     "shift+t": [drag(3)],
 
-    "h" : [cell_select(1,3)],
+    "h" : [cell_select(0,2)],
     "b" : [grid_nav],
     "m" : [record_mark],
     "period" : [apply_mark],
@@ -282,6 +306,7 @@ conf = {
     "mod4+a": [start, grid(9,9), grid_nav],
     "mod4+e": [start, cursorzoom(342, 192), grid(9,9), grid_nav],
     "mod4+shift+e": [start, apply_mark],
+    "mod4+shift+a": [start, dart_nav],
 
     "s": [info],
     "ctrl+shift+i": [info],
@@ -298,11 +323,21 @@ grid_nav_chars = ["q", "w", "e", "r", "t", "y", "u", "i", "i", "o", "p"]
 # Neo2 layout
 grid_nav_chars = ["x", "v", "l", "c", "w", "k", "h", "g", "f", "q"]
 
+dart_nav_chars = [
+        ["1","2","3","4","5","6","7","8","9","0"],
+        ["x","v","l","c","w","k","h","g","f","q"],
+        ["u","i","a","e","o","s","n","r","t","d"],
+        ["ü","ö","ä","p","z","b","m",",",".","j"],
+    ]
+
 
 class Size:
     def __init__(self):
         w = 0
         h = 0
+
+    def __str__(self):
+        return "size: " + str(self.w) + "," + str(self.h)
 
 class State:
     def __init__(self, nav):
@@ -336,7 +371,7 @@ class State:
         return c
 
     def __str__(self):
-        return "state: \n" + "  " + str(self.zone)
+        return "state: \n" + "  " + str(self.zone) + "  grid " + str(self.grid)
 
     def enter_mode(self, mode):
         self.nav.vis.enable()
@@ -431,7 +466,7 @@ class GridMode(Mode):
             if state.zone.w < state.grid.w * 30 and not first_y and not last_y:
                 horizontal_until_x = state.zone.left() - 10
 
-            if first_y or last_y or state.grid_nav == None or state.grid_nav == "row":
+            if first_y or last_y or state.grid_nav == None or state.grid_nav == "row" or state.grid_nav == "dart":
                 h = Line()
                 h.x1 = state.zone.left()
                 h.x2 = horizontal_until_x
@@ -447,7 +482,7 @@ class GridMode(Mode):
             if state.zone.h < state.grid.h * 30 and not first_x and not last_x:
                 vertical_until_y = state.zone.top() - 10
 
-            if first_x or last_x or state.grid_nav == None or state.grid_nav == "col":
+            if first_x or last_x or state.grid_nav == None or state.grid_nav == "col" or state.grid_nav == "dart":
                 v = Line()
                 v.x1 = state.zone.left() + gx * state.zone.w / state.grid.w
                 v.x2 = v.x1
@@ -478,6 +513,19 @@ class GridMode(Mode):
                 if l.size(state.nav.vis)[0] > delta: break
                 state.nav.draw(l)
 
+        if state.grid_nav == "dart":
+            delta_x = state.zone.w / state.grid.w
+            delta_y = state.zone.h / state.grid.h
+            l = Label()
+            l.text = "Ig"
+            if max(l.size(state.nav.vis)) < min(delta_x, delta_y):
+                for gx in range(state.grid.w):
+                    for gy in range(state.grid.h):
+                        l = Label()
+                        l.x = state.zone.left() + (gx + 0.5) * delta_x
+                        l.y = state.zone.top() + (gy + 0.5) * delta_y
+                        l.text = str(dart_nav_chars[gy][gx])
+                        state.nav.draw(l)
 
         if enabled: state.nav.vis.enable()
 
@@ -581,6 +629,8 @@ class Navigator:
             del self.history[-1]
             self.state = self.history[-1].copy()
             self.state.update(undoable=False)
+
+            print("roling back to state " + str(self.state))
 
 
 if __name__ == '__main__':

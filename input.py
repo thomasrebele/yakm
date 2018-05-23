@@ -18,6 +18,18 @@ key_mods = {
     "mod5": X.Mod5Mask,
 }
 
+keys_to_code = {
+    '&':'ampersand', '\'':'apostrophe', '^':'asciicircum', '~':'asciitilde',
+    '*':'asterisk', '@':'at', '\\':'backslash', '|':'bar', '\b':'BackSpace',
+    '{':'braceleft', '}':'braceright', '[':'bracketleft', ']':'bracketright',
+    ':':'colon', ',':'comma', '$':'dollar', '\e':'Escape',
+    '=':'equal', '!':'exclam', '`':'grave', '>':'greater', '<':'less',
+    '-':'minus', '\n':'Return', '#':'numbersign', '(':'parenleft', ')':'parenright',
+    '%':'percent', '.':'period', '+':'plus', '?':'question', '"':'quotedbl',
+    ';':'semicolon', '/':'slash', ' ':'space', '\t':'Tab', '_':'underscore',
+    'ü':'udiaeresis', 'ö':'odiaeresis', 'ä':'adiaeresis'
+}
+
 
 disp = Xlib.display.Display()
 screen = disp.screen()
@@ -35,7 +47,7 @@ def get_keycode(key):
         else:
             key = p
 
-    key_sym = XK.string_to_keysym(key)
+    key_sym = XK.string_to_keysym(keys_to_code.get(key, key))
     return disp.keysym_to_keycode(key_sym), mod
 
 def get_keysym(key_code):
