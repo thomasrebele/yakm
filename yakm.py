@@ -199,7 +199,7 @@ def grid_nav(state):
     # prepare for selecting rows
     state.grid_nav = "row"
     for i, c in enumerate(grid_nav_chars):
-        state.nav.register_key(c, lambda state=state, i=i: row_select(i)(state))
+        state.nav.register_key(c, lambda state=state, i=i: row_select(i)(state.nav.state))
 
     state.update()
 
@@ -214,7 +214,7 @@ def row_select(y):
         # prepare for selecting cols
         state.grid_nav = "col"
         for i, c in enumerate(grid_nav_chars):
-            state.nav.register_key(c, lambda state=state, i=i: col_select(i)(state))
+            state.nav.register_key(c, lambda state=state, i=i: col_select(i)(state.nav.state))
 
         state.update()
 
@@ -252,7 +252,7 @@ def dart_nav(state):
             # uggly hack
             state.nav.register_key(key, lambda state=state, x=x, y=y: cell_select(x,y)(state.nav.state))
 
-    state.nav.register_key("Escape", lambda state=state: exit_mode(state))
+    state.nav.register_key("Escape", lambda state=state: exit_mode(state.nav.state))
     state.update()
 
 
