@@ -77,7 +77,9 @@ def warp(state):
 
 def start(state):
     ### TODO: enter mode
-    state.enter_mode(Mode(state.nav, conf))
+    if len(state.mode) == 0:
+        state.enter_mode(Mode(state.nav, conf))
+
     state.zone.w = state.screen.w
     state.zone.h = state.screen.h
     state.zone.x = state.screen.w/2
@@ -295,7 +297,7 @@ conf = {
     "ctrl+shift+i": [info],
     #"c": [clear],
 
-    "o": [history_back],
+    "o": [history_back, warp],
     "z": [exit_mode],
     "Escape": [end],
 }
@@ -464,8 +466,6 @@ class GridMode(Mode):
                 for x, key in enumerate(row):
                     # uggly hack
                     new[key] = [cell_select(x,y), warp]
-
-            new["Escape"] = [exit_mode]
 
         bindings.update(new)
         return bindings
