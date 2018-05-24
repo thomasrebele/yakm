@@ -196,11 +196,8 @@ def cell_select(x, y):
 def grid_nav(state):
     global grid_nav_chars
 
-    # prepare for selecting rows
+    # switch to row selection mode
     state.grid_nav = "row"
-    for i, c in enumerate(grid_nav_chars):
-        state.nav.register_key(c, lambda state=state, i=i: row_select(i)(state.nav.state))
-
     state.update()
 
 
@@ -211,11 +208,8 @@ def row_select(y):
         state.zone.y = top + 0.5 * state.zone.h / state.grid.h
         state.zone.h = max(state.grid.h, state.zone.h / state.grid.h)
 
-        # prepare for selecting cols
+        # switch to col selection mode
         state.grid_nav = "col"
-        for i, c in enumerate(grid_nav_chars):
-            state.nav.register_key(c, lambda state=state, i=i: col_select(i)(state.nav.state))
-
         state.update()
 
     return annotate(upd, "row_select " + str(y))
@@ -230,7 +224,6 @@ def col_select(x):
         warp(state)
 
         state.grid_nav = None
-
         grid_nav(state)
 
 
@@ -245,10 +238,8 @@ def dart_nav(state):
     h = len(dart_nav_chars)
     grid(w,h)(state)
 
-    # prepare for selecting rows
+    # switch to dart selection mode
     state.grid_nav = "dart"
-
-
     state.update()
 
 
@@ -423,12 +414,12 @@ class Mode:
         bindings.update(self.conf)
         return bindings
 
-    def enter(self, state):
+    def update_bindings(self, state):
         bindings = {}
         for mode in state.mode:
-            mode.get_bindings(state, bindings)
+            bindings = mode.get_bindings(state, bindings)
 
-        for key, action in self.get_bindings(state).items():
+        for key, action in bindings.items():
             # use state of navigation, so that we can undo actions
             def fn(action=action, nav=state.nav):
                 for act in action:
@@ -440,10 +431,13 @@ class Mode:
             fn = annotate(fn, get_cmd(action))
             state.nav.register_key(key, fn)
 
+    def enter(self, state):
+        self.update_bindings(state)
         state.nav.draw(state.zone)
-        self.state = state
 
     def exit(self, state):
+        # only unregister my keybindings
+        # other keybindings are restored when entering previous mode
         for key, action in self.get_bindings(state).items():
             if not start in action:
                 state.nav.unregister_key(key)
@@ -455,11 +449,41 @@ class GridMode(Mode):
     def __init__(self, nav, conf):
         super().__init__(nav, conf)
 
+    def get_bindings(self, state, bindings={}):
+        new = {}
+        if state.grid_nav == "row":
+            print("apply row bindings")
+            for i, c in enumerate(grid_nav_chars):
+                new[c] = [lambda state=state, i=i: row_select(i)(state.nav.state)]
+
+
+        if state.grid_nav == "col":
+            print("apply col bindings")
+            for i, c in enumerate(grid_nav_chars):
+                new[c] = [lambda state=state, i=i: col_select(i)(state.nav.state)]
+
+        if state.grid_nav == "dart":
+            print("apply dart bindings")
+            for y, row in enumerate(dart_nav_chars):
+                for x, key in enumerate(row):
+                    # uggly hack
+                    new[key] = [lambda state=state, x=x, y=y: cell_select(x,y)(state.nav.state)]
+
+            new["Escape"] = [lambda state=state: exit_mode(state.nav.state)]
+
+        bindings.update(new)
+        return bindings
+
     def apply(self, state):
         # draw grid
         state.nav.undraw()
         enabled = state.nav.vis.active
+
+        # do we need this?
+        if not enabled: return
+
         state.nav.vis.disable()
+        self.update_bindings(state)
 
         # draw horizontal lines
         for gy, first_y, last_y in iter_first_last(range(state.grid.h+1)):
@@ -529,18 +553,7 @@ class GridMode(Mode):
                         l.text = str(dart_nav_chars[gy][gx])
                         state.nav.draw(l)
 
-        if enabled:
-            # TODO: treat this in a better way
-            if state.grid_nav == "dart":
-                for y, row in enumerate(dart_nav_chars):
-                    for x, key in enumerate(row):
-                        # uggly hack
-                        state.nav.register_key(key, lambda state=state, x=x, y=y: cell_select(x,y)(state.nav.state))
-
-                # TODO: treat keybindings more nicely
-                state.nav.register_key("Escape", lambda state=state: exit_mode(state.nav.state))
-
-            state.nav.vis.enable()
+        state.nav.vis.enable()
 
 class MarkMode(Mode):
     def __init__(self, nav, conf, record = False):

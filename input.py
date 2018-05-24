@@ -138,15 +138,13 @@ class Input:
 
     def unregister_key(self, key):
         key_code, mod_mask = get_keycode(key)
-        binding = self.bindings[(key_code, mod_mask)]
-        if binding._global:
-            ungrab_key(key_code, mod_mask)
-        del self.bindings[(key_code, mod_mask)]
-
-    def unregister_non_global_keys():
-        for (k,m),binding  in self.bindings:
-            if not binding._global:
-                del self.bindings[(key_code, mod_mask)]
+        try:
+            binding = self.bindings[(key_code, mod_mask)]
+            if binding._global:
+                ungrab_key(key_code, mod_mask)
+            del self.bindings[(key_code, mod_mask)]
+        except KeyError:
+            pass
 
     def grab_keyboard(self):
         root.grab_keyboard(True, X.GrabModeAsync, X.GrabModeAsync,X.CurrentTime)
