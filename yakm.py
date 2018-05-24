@@ -77,6 +77,7 @@ def warp(state):
 
 def start(state):
     ### TODO: enter mode
+    state.enter_mode(Mode(state.nav, conf))
     state.zone.w = state.screen.w
     state.zone.h = state.screen.h
     state.zone.x = state.screen.w/2
@@ -188,8 +189,6 @@ def cell_select(x, y):
         state.zone.x = left + state.zone.w/2
         state.zone.y = top + state.zone.h/2
 
-        state.update()
-
     return annotate(upd, "cell_select " + str(x) + " " + str(y))
 
 # grid navigation
@@ -198,7 +197,6 @@ def grid_nav(state):
 
     # switch to row selection mode
     state.grid_nav = "row"
-    state.update()
 
 
 def row_select(y):
@@ -210,7 +208,6 @@ def row_select(y):
 
         # switch to col selection mode
         state.grid_nav = "col"
-        state.update()
 
     return annotate(upd, "row_select " + str(y))
 
@@ -240,7 +237,6 @@ def dart_nav(state):
 
     # switch to dart selection mode
     state.grid_nav = "dart"
-    state.update()
 
 
 
@@ -299,9 +295,9 @@ conf = {
     "ctrl+shift+i": [info],
     #"c": [clear],
 
-    "o": [history_back],
-    "z": [exit_mode],
-    "Escape": [end],
+    "y": [history_back],
+    "Escape": [exit_mode],
+    "z": [end],
 }
 
 # QWERTY layout
@@ -358,7 +354,7 @@ class State:
         return c
 
     def __str__(self):
-        return "state: \n" + "  " + str(self.zone) + "  grid " + str(self.grid)
+        return "state: \n" + "  " + str(self.zone) + "  grid " + str(self.grid) + " mode " + ",".join([str(i.__class__.__name__) for i in self.mode])
 
     def enter_mode(self, mode):
         self.nav.vis.enable()
@@ -467,7 +463,7 @@ class GridMode(Mode):
             for y, row in enumerate(dart_nav_chars):
                 for x, key in enumerate(row):
                     # uggly hack
-                    new[key] = [cell_select(x,y)]
+                    new[key] = [cell_select(x,y), warp]
 
             new["Escape"] = [exit_mode]
 
@@ -643,6 +639,7 @@ class Navigator:
         self.vis.stop()
 
     def do(self, state):
+        print("do " + str(state))
         # TODO: only add if change, something like if len(self.history) == 0: state != self.history[-1]:
         self.history.append(state.copy())
 
