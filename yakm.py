@@ -382,8 +382,9 @@ class State:
             self.mode = self.mode[:-1]
             if not all: break
 
-
-        if len(self.mode) == 0:
+        if len(self.mode) > 0:
+            self.mode[-1].enter(self)
+        else:
             self.nav.vis.disable()
             self.nav.vis.refresh()
             self.nav.ungrab_keyboard()
@@ -416,10 +417,18 @@ class Mode:
     def apply(self, state):
         state.nav.draw(state.zone)
 
-    def enter(self, state):
-        self.prev_bindings = state.nav.key_bindings()
+    # this method is called also for non-active modes
+    # the dict 'bindings' contains binding of outer modes
+    def get_bindings(self, state, bindings={}):
+        bindings.update(self.conf)
+        return bindings
 
-        for key, action in self.conf.items():
+    def enter(self, state):
+        bindings = {}
+        for mode in state.mode:
+            mode.get_bindings(state, bindings)
+
+        for key, action in self.get_bindings(state).items():
             # use state of navigation, so that we can undo actions
             def fn(action=action, nav=state.nav):
                 for act in action:
@@ -435,12 +444,9 @@ class Mode:
         self.state = state
 
     def exit(self, state):
-        for key, action in conf.items():
+        for key, action in self.get_bindings(state).items():
             if not start in action:
                 state.nav.unregister_key(key)
-
-        for key, action in self.prev_bindings.items():
-            state.nav.register_key(key, action)
 
         state.nav.undraw()
 
