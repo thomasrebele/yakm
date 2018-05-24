@@ -55,7 +55,7 @@ class Label(Action):
         self.padding = 2
 
     def size(self, drawing):
-        info = drawing.gc.query_text_extents(self.text.encode())._data
+        info = drawing.text_extents(drawing.gc, self.text)
         self.width = info["overall_width"] + 2 * self.padding
         self.height = info["font_ascent"] + info["font_descent"] + 2 * self.padding
         self.shift_y = info["font_ascent"]
@@ -146,7 +146,6 @@ class Drawing:
             font = font,
         )
 
-
         self.actions = {}
         self.event = threading.Event()
         self.thread = threading.Thread(name='update',
@@ -175,6 +174,15 @@ class Drawing:
                     print(e)
                     return
             e.clear()
+
+    def text_extents(self, gc, text):
+        if not hasattr(gc, "_extent_cache"): setattr(gc, "_extent_cache", {})
+        cache = getattr(gc, "_extent_cache")
+
+        if text in cache: return cache[text]
+        info = self.gc.query_text_extents(text.encode())._data
+        cache[text] = info
+        return info
 
     def refresh(self):
         # TODO: do this with xlib
