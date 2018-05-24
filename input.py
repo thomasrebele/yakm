@@ -18,6 +18,7 @@ key_mods = {
     "mod5": X.Mod5Mask,
 }
 
+# use xev command to find out codes
 keys_to_code = {
     '&':'ampersand', '\'':'apostrophe', '^':'asciicircum', '~':'asciitilde',
     '*':'asterisk', '@':'at', '\\':'backslash', '|':'bar', '\b':'BackSpace',
@@ -27,7 +28,7 @@ keys_to_code = {
     '-':'minus', '\n':'Return', '#':'numbersign', '(':'parenleft', ')':'parenright',
     '%':'percent', '.':'period', '+':'plus', '?':'question', '"':'quotedbl',
     ';':'semicolon', '/':'slash', ' ':'space', '\t':'Tab', '_':'underscore',
-    'ü':'udiaeresis', 'ö':'odiaeresis', 'ä':'adiaeresis'
+    'ü':'udiaeresis', 'ö':'odiaeresis', 'ä':'adiaeresis', 'ß':'ssharp',
 }
 
 

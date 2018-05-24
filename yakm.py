@@ -286,18 +286,18 @@ conf = {
 
     "k": [cursorzoom(342, 192)],
     "p": [enlarge(1.5)],
-    "mod4+a": [start, grid(9,9), grid_nav],
+    "mod4+a": [start, cursorzoom(342, 192), grid(9,9), grid_nav, apply_mark],
     "mod4+e": [start, cursorzoom(342, 192), grid(9,9), grid_nav],
-    "mod4+shift+e": [start, apply_mark],
-    "mod4+shift+a": [start, dart_nav],
+    "mod4+n": [start, dart_nav],
+    #"mod4+shift+a": [start, grid(9,9), grid_nav],
 
     "s": [info],
     "ctrl+shift+i": [info],
     #"c": [clear],
 
-    "y": [history_back],
-    "Escape": [exit_mode],
-    "z": [end],
+    "o": [history_back],
+    "z": [exit_mode],
+    "Escape": [end],
 }
 
 # QWERTY layout
@@ -307,10 +307,10 @@ grid_nav_chars = ["q", "w", "e", "r", "t", "y", "u", "i", "i", "o", "p"]
 grid_nav_chars = ["x", "v", "l", "c", "w", "k", "h", "g", "f", "q"]
 
 dart_nav_chars = [
-        ["1","2","3","4","5","6","7","8","9","0"],
-        ["x","v","l","c","w","k","h","g","f","q"],
-        ["u","i","a","e","o","s","n","r","t","d"],
-        ["ü","ö","ä","p","z","b","m",",",".","j"],
+        ["1","2","3","4","6","7","8","9","0"],
+        ["x","v","l","c","k","h","g","f","q"],
+        ["u","i","a","e","s","n","r","t","d"],
+        ["ü","ö","ä","p","b","m",",",".","j"],
     ]
 
 
