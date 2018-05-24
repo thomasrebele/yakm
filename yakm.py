@@ -100,7 +100,7 @@ def end(state):
 
 def clear(state):
     for k in state.nav.key_bindings():
-        state.nav.unregister_key(k)
+        state.nav.input.unregister_key(k)
 
 
 def info(state):
@@ -429,7 +429,7 @@ class Mode:
                     nav.state.update()
 
             fn = annotate(fn, get_cmd(action))
-            state.nav.register_key(key, fn)
+            state.nav.input.register_key(key, fn)
 
     def enter(self, state):
         self.update_bindings(state)
@@ -440,7 +440,7 @@ class Mode:
         # other keybindings are restored when entering previous mode
         for key, action in self.get_bindings(state).items():
             if not start in action:
-                state.nav.unregister_key(key)
+                state.nav.input.unregister_key(key)
 
         state.nav.undraw()
 
@@ -620,9 +620,6 @@ class Navigator:
         self.move = self.input.move
         self.click = self.input.click
         self.pointer = self.input.pointer
-
-        self.register_key = self.input.register_key
-        self.unregister_key = self.input.unregister_key
 
         self.key_bindings = self.input.key_bindings
         self.grab_keyboard = self.input.grab_keyboard
