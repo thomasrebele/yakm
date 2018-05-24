@@ -454,22 +454,22 @@ class GridMode(Mode):
         if state.grid_nav == "row":
             print("apply row bindings")
             for i, c in enumerate(grid_nav_chars):
-                new[c] = [lambda state=state, i=i: row_select(i)(state.nav.state)]
+                new[c] = [row_select(i)]
 
 
         if state.grid_nav == "col":
             print("apply col bindings")
             for i, c in enumerate(grid_nav_chars):
-                new[c] = [lambda state=state, i=i: col_select(i)(state.nav.state)]
+                new[c] = [col_select(i)]
 
         if state.grid_nav == "dart":
             print("apply dart bindings")
             for y, row in enumerate(dart_nav_chars):
                 for x, key in enumerate(row):
                     # uggly hack
-                    new[key] = [lambda state=state, x=x, y=y: cell_select(x,y)(state.nav.state)]
+                    new[key] = [cell_select(x,y)]
 
-            new["Escape"] = [lambda state=state: exit_mode(state.nav.state)]
+            new["Escape"] = [exit_mode]
 
         bindings.update(new)
         return bindings
