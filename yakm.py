@@ -38,6 +38,20 @@ from input import *
 # grid-nav off
 # grid-nav toggle
 
+
+try:
+    import tkinter
+    import tkinter.simpledialog
+
+    def input_dialog(msg=""):
+        tkinter.Tk().withdraw()
+        msg = str(msg) + "\n\n<Enter>  --->  OK\n<Escape>  --->  cancel"
+        return tkinter.simpledialog.askstring("yakm", msg)
+except Exception as e:
+    print(e)
+    print("WARNING: input_dialog not available")
+
+
 def annotate(fn, cmd):
     fn.cmd = str(cmd)
     return fn
@@ -80,11 +94,6 @@ def start(state):
     if len(state.mode) == 0:
         state.enter_mode(Mode(state.nav, conf))
 
-    state.zone.w = state.screen.w
-    state.zone.h = state.screen.h
-    state.zone.x = state.screen.w/2
-    state.zone.y = state.screen.h/2
-
     state.nav.grab_keyboard()
 
 # suspend current mode
@@ -112,6 +121,8 @@ def info(state):
         print("    key " + str(key) + " -> " + str(get_cmd(action)))
     win = state.nav.input.window()
     print("focused window: " + str(win))
+
+    state.nav.input_dialog("test")
 
 
 def ignore(state):
@@ -153,6 +164,12 @@ def move_down(ratio):
     def upd(state, ratio=ratio):
         state.zone.y = min(state.screen.h, state.zone.y + state.zone.h * ratio)
     return annotate(upd, "move_down " + str(ratio))
+
+def full(state):
+    state.zone.w = state.screen.w
+    state.zone.h = state.screen.h
+    state.zone.x = state.zone.w / 2
+    state.zone.y = state.zone.h / 2
 
 def cursorzoom(w, h):
     def upd(state, w=w, h=h):
@@ -253,7 +270,7 @@ def apply_mark(state):
 
 
 # annotate functions without arguments
-for i in [warp, start, clear, info, exit_mode, end, grid_nav, history_back]:
+for i in [warp, start, clear, info, exit_mode, end, grid_nav, history_back, full]:
     i = annotate(i, i.__name__)
 
 
@@ -281,21 +298,19 @@ conf = {
     "shift+r": [drag(2)],
     "shift+t": [drag(3)],
 
-    "h" : [cell_select(0,2)],
-    "b" : [grid_nav],
+    "b" : [grid(9,9), grid_nav],
     "m" : [record_mark],
     "period" : [apply_mark],
 
-    "k": [cursorzoom(342, 192)],
+    ",": [cursorzoom(342, 192)],
+    "mod4+r": [full],
     "p": [enlarge(1.5)],
     "mod4+a": [start, cursorzoom(342, 192), grid(9,9), grid_nav, apply_mark],
     "mod4+e": [start, cursorzoom(342, 192), grid(9,9), grid_nav],
-    "mod4+n": [start, dart_nav],
-    #"mod4+shift+a": [start, grid(9,9), grid_nav],
+    "mod4+s": [start, full, dart_nav],
+    "s": [dart_nav],
 
-    "s": [info],
     "ctrl+shift+i": [info],
-    #"c": [clear],
 
     "o": [history_back, warp],
     "z": [exit_mode],
@@ -634,6 +649,8 @@ class Navigator:
 
                 self.input.register_key(key, fn, _global=True)
 
+        self.input.register_key("ü", lambda nav=self: info(nav.state), _global=True)
+
 
     def __del__(self):
         self.vis.stop()
@@ -651,6 +668,21 @@ class Navigator:
             self.state.update(undoable=False)
 
             print("roling back to state " + str(self.state))
+
+    def input_dialog(self, msg=""):
+        enabled = self.vis.active
+        self.vis.disable()
+        self.vis.refresh()
+        grabbing = self.input.grabbing
+        self.ungrab_keyboard()
+
+        text = input_dialog(msg)
+        print("got text " + str(text))
+
+        if enabled:
+            self.vis.enable()
+        if grabbing:
+            self.grab_keyboard()
 
 
 if __name__ == '__main__':

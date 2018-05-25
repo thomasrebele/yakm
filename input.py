@@ -3,6 +3,7 @@
 import traceback
 import threading
 from time import sleep
+import queue
 
 import Xlib
 from Xlib import X, XK
@@ -80,9 +81,17 @@ class Binding:
 class Input:
     def __init__(self):
         self.active = True
-        self.thread = threading.Thread(name='keyboard listener',
-                                 target=self.event_loop)
-        self.thread.start()
+        self.event_thread = threading.Thread(name='input event thread', target=self.event_loop)
+        self.event_thread.start()
+
+        # use a different thread for executing the actions
+        # reason: the event thread needs to receive the key release event so that ungrab_keyboard works for input_dialog
+        self.action_queue = queue.Queue(1000)
+        self.action_thread = threading.Thread(name='input action thread',
+                        target=self.action_loop)
+        self.action_thread.start()
+
+        self.grabbing = False
         self.bindings = {}
 
         geo = root.get_geometry()
@@ -101,7 +110,7 @@ class Input:
 
                 k = (key_code, mod)
                 if k in self.bindings:
-                    self.bindings[k].fn()
+                    self.action_queue.put(self.bindings[k].fn)
                 else:
                     print("unbound key " + str(key_code))
 
@@ -114,6 +123,13 @@ class Input:
             self.ungrab_keyboard()
             for k in self.key_bindings():
                 self.unregister_key(k)
+
+    def action_loop(self):
+        while self.active:
+            sleep(0.01)
+            if not self.action_queue.empty():
+                item = self.action_queue.get()
+                item()
 
     def event_loop(self):
         while self.active:
@@ -148,12 +164,19 @@ class Input:
             pass
 
     def grab_keyboard(self):
+        print("input: grabbing keyboard")
+        self.grabbing = True
         root.grab_keyboard(True, X.GrabModeAsync, X.GrabModeAsync,X.CurrentTime)
 
     def ungrab_keyboard(self):
+        print("input: ungrabbing keyboard")
+        self.grabbing = False
         disp.ungrab_keyboard(X.CurrentTime)
+        print("input: ungrabbing done")
 
     def stop(self):
+        if self.grabbing:
+            self.ungrab_keyboard()
         self.active = False
 
     def move(self, x, y):
