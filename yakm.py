@@ -9,6 +9,7 @@ import json
 
 import pathlib
 from os.path import expanduser
+from collections import defaultdict
 
 from input import *
 
@@ -401,13 +402,13 @@ class State:
             self.nav.do(self)
 
     # save settings for class
-    def settings(self, inst):
+    def settings(self, inst, default={}):
         if not hasattr(self, "_settings"):
             self._settings = {}
 
         name = inst.__class__.__name__
         if not name in self._settings:
-            self._settings[name] = {}
+            self._settings[name] = default
 
         return self._settings[name]
 
@@ -568,11 +569,13 @@ class GridMode(Mode):
 
 class MarkMode(Mode):
     def __init__(self, nav, conf, record = False):
-        marks = nav.state.settings(self)
-        if len(marks) == 0:
+        self.nav = nav
+        _marks = self.marks()
+
+        if len(_marks) == 0:
             try:
                 with open(conf_dir + "marks", "r") as f:
-                    marks.update(json.loads(f.read()))
+                    _marks.update(json.loads(f.read()))
             except FileNotFoundError:
                 pass
 
@@ -581,18 +584,39 @@ class MarkMode(Mode):
             # currently only alphabetic marks
             for key in list(string.ascii_lowercase):
                 def register(state, key=key):
-                    marks = nav.state.settings(self)
-                    marks[key] = (state.zone.x,state.zone.y)
+                    _marks = self.marks()
+
+                    win = self.nav.input.window()
+                    msg=("enter a filter for mark " + str(key) + "\n" +
+                        "leave empty for global mark" + "\n\n" +
+                        str(win).lower()
+                    )
+                    cond = nav.input_dialog(msg) or ""
+
+                    if cond:
+                        _marks[cond][key] = (state.zone.x,state.zone.y)
+
                 register = annotate(register, "register '" + key + "'")
                 conf[key] = [register, self.save, exit_mode]
         else:
-            for key, coord in marks.items():
+            for key, coord in self.bindings().items():
                 conf[key] = [move_to(coord[0], coord[1]), warp, exit_mode]
 
         super().__init__(nav, conf)
 
+    # get mapping from condition -> key -> action
     def marks(self):
-        return self.nav.state.settings(self)
+        return self.nav.state.settings(self, defaultdict(lambda: {}))
+
+    # get mapping from key -> action
+    def bindings(self):
+        result = {}
+        win = str(self.nav.input.window()).lower()
+        for cond, bindings in self.marks().items():
+            if not cond.lower() in str(win): continue
+            result.update(bindings)
+        print(result)
+        return result
 
     def apply(self, state):
         # draw grid
@@ -600,7 +624,7 @@ class MarkMode(Mode):
         enabled = state.nav.vis.active
         state.nav.vis.disable()
 
-        for key, coord in self.marks().items():
+        for key, coord in self.bindings().items():
             l = Label()
             l.x = coord[0]
             l.y = coord[1]
@@ -612,7 +636,7 @@ class MarkMode(Mode):
     def save(self, state):
         print("saving!")
         with open(conf_dir + "marks", "w") as f:
-            f.write(json.dumps(self.marks()))
+            f.write(json.dumps(self.marks(), indent=4, sort_keys=True))
 
 
 
@@ -677,12 +701,13 @@ class Navigator:
         self.ungrab_keyboard()
 
         text = input_dialog(msg)
-        print("got text " + str(text))
 
         if enabled:
             self.vis.enable()
         if grabbing:
             self.grab_keyboard()
+
+        return text
 
 
 if __name__ == '__main__':

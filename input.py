@@ -194,10 +194,7 @@ class Input:
 
     def window(self):
         win = root.query_pointer().child or root
-        print(dir(win))
-        print(win.get_wm_client_machine())
-        print(win.get_wm_class())
-        return {"name": win.get_wm_name()}
+        return {"name": win.get_wm_name(), "class": win.get_wm_class()}
 
 
     def click(self, button, actions=["press", "release"]):
