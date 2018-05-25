@@ -123,8 +123,6 @@ def info(state):
     win = state.nav.input.window()
     print("focused window: " + str(win))
 
-    state.nav.input_dialog("test")
-
 
 def ignore(state):
     pass
@@ -624,7 +622,18 @@ class MarkMode(Mode):
         enabled = state.nav.vis.active
         state.nav.vis.disable()
 
-        for key, coord in self.bindings().items():
+        bindings = self.bindings()
+
+        if len(bindings) == 0:
+            l = Label()
+            l.x = state.screen.w / 2
+            l.y = state.screen.h / 2
+            l.text = "no marks"
+            state.nav.draw(l)
+
+
+
+        for key, coord in bindings.items():
             l = Label()
             l.x = coord[0]
             l.y = coord[1]
@@ -672,8 +681,6 @@ class Navigator:
                         act(self.state)
 
                 self.input.register_key(key, fn, _global=True)
-
-        self.input.register_key("ü", lambda nav=self: info(nav.state), _global=True)
 
 
     def __del__(self):
