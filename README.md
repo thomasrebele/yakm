@@ -25,19 +25,16 @@ Another example configuration is provided for the [Neo](http://neo-layout.org/) 
 Modes
 ---
 
-# Default mode
-
+**Default mode:**
 A red rectangle shows the current zone. 
 It can be moved around and made smaller or larger.
 
-# Grid mode
-
+**Grid mode:**
 The zone is divided into rows and columns.
 It supports grid navigation (first selecting a row, then selecting a column),
 and dart navigation (directly selecting a cell by pressing a key).
 
-# Mark mode
-
+**Mark mode:**
 First, the user "bookmarks" a pixel on the screen as a letter, e.g., "a".
 Then, the user may jump directly to that pixel by entering the mark mode and pressing key "a".
 
@@ -45,7 +42,7 @@ Then, the user may jump directly to that pixel by entering the mark mode and pre
 Commands
 ---
 
-All commands are defined in the `commands` section of yakm.py.
+All commands are defined in the `commands` section of `yakm.py`.
 The docstring of each command describes its purpose.
 
 If you see a command like
@@ -79,9 +76,9 @@ In that case, you have to specify it in the configuration file:
 Caveats
 ---
 
-* right click does not work in some programs (e.g., evince)
-* left click does not work in some programs (e.g., XFCE panel)
-* some commands of keynav are not yet implemented (e.g., grid-nav off/toggle, record, sh, cut-*, ...)
-
+* Right click does not work in some programs (e.g., evince)
+* Left click does not work in some programs (e.g., XFCE panel)
+* Some commands of keynav are not yet implemented (e.g., grid-nav off/toggle, record, sh, cut-\*, ...)
+* The drawing module could be improved. Currently it uses the external command `xrefresh` to remove previously drawn lines. This causes a noticable flickering.
 
 
