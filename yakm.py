@@ -17,10 +17,8 @@ from os.path import expanduser
 from collections import defaultdict
 
 
-from draw import *
-from time import sleep
-
-from input import *
+import draw
+import input
 
 # implemented actions:
 
@@ -75,7 +73,8 @@ def get_cmd(x):
         try:
             return x.cmd
         except:
-            if not x.__name__: return str(x)
+            if not x.__name__:
+                return str(x)
             return x.__name__
 
     if type(x) == list:
@@ -112,7 +111,7 @@ def warp(state):
 def start(state):
     """Start the navigation. Enters the default mode if no other mode is active"""
     ### TODO: enter mode
-    if len(state.mode) == 0:
+    if not state.mode:
         state.enter_mode(Mode(state.nav, conf))
 
     state.nav.grab_keyboard()
@@ -146,7 +145,7 @@ def info(state):
     print("focused window: " + str(win))
 
 
-def ignore(state):
+def ignore(_state):
     """This command does nothing"""
     pass
 
@@ -217,7 +216,8 @@ def full(state):
     state.zone.y = state.zone.h / 2
 
 def cursorzoom(width, height):
-    """Set the size of the zone to width and heigth, and move it so that the pointer is at the center of the zone"""
+    """Set the size of the zone to width and heigth,
+    and move it so that the pointer is at the center of the zone"""
 
     def upd(state, w=width, h=height):
         """cursorzoom action"""
@@ -229,7 +229,8 @@ def cursorzoom(width, height):
     return annotate(upd, "cursorzoom " + str(width) + " " + str(height))
 
 def enlarge(factor):
-    """Multiply the sides of the zone by factor. The center of the zone stays at the same position"""
+    """Multiply the sides of the zone by factor.
+    The center of the zone stays at the same position"""
 
     def upd(state, f=factor):
         """enlarge action"""
@@ -249,7 +250,7 @@ def grid(width, height):
     return annotate(upd, "grid " + str(width) + " " + str(height))
 
 def cell_select(x, y):
-    """Set the zone to the cell with grid coordinates (x,y)"""
+    """Set the zone to the cell with grid coordinates (x, y)"""
 
     def upd(state, x=x, y=y):
         """cell_select action"""
@@ -316,7 +317,7 @@ def dart_nav(state):
     global dart_nav_chars
     w = len(dart_nav_chars[0])
     h = len(dart_nav_chars)
-    grid(w,h)(state)
+    grid(w, h)(state)
 
     # switch to dart selection mode
     state.grid_nav = "dart"
@@ -329,11 +330,15 @@ def history_back(state):
     state.nav.undo()
 
 def record_mark(state):
-    """Save the current pointer position as a mark associated with the next pressed letter"""
+    """Save the current pointer position as a mark
+    associated with the next pressed letter"""
+
     state.enter_mode(MarkMode(state.nav, conf, record=True))
 
 def apply_mark(state):
-    """On the next pressed letter, move the zone and pointer to the position saved for that letter"""
+    """On the next pressed letter, move the zone
+    and the pointer to the position saved for that letter"""
+
     state.enter_mode(MarkMode(state.nav, conf))
 
 
@@ -368,15 +373,15 @@ conf = {
     "shift+r": [drag(2)],
     "shift+t": [drag(3)],
 
-    "b" : [grid(9,9), grid_nav],
+    "b" : [grid(9, 9), grid_nav],
     "m" : [record_mark],
     "period" : [apply_mark],
 
     ",": [cursorzoom(342, 192)],
     "mod4+r": [full],
     "p": [enlarge(1.5)],
-    "mod4+a": [start, cursorzoom(342, 192), grid(9,9), grid_nav, apply_mark],
-    "mod4+e": [start, cursorzoom(342, 192), grid(9,9), grid_nav],
+    "mod4+a": [start, cursorzoom(342, 192), grid(9, 9), grid_nav, apply_mark],
+    "mod4+e": [start, cursorzoom(342, 192), grid(9, 9), grid_nav],
     "mod4+s": [start, full, dart_nav],
     "s": [dart_nav],
 
@@ -394,18 +399,18 @@ grid_nav_chars = ["q", "w", "e", "r", "t", "y", "u", "i", "i", "o", "p"]
 grid_nav_chars = ["x", "v", "l", "c", "w", "k", "h", "g", "f", "q"]
 
 dart_nav_chars = [
-        ["1","2","3","4","6","7","8","9","0"],
-        ["x","v","l","c","k","h","g","f","q"],
-        ["u","i","a","e","s","n","r","t","d"],
-        ["ü","ö","ä","p","b","m",",",".","j"],
-    ]
+    ["1", "2", "3", "4", "6", "7", "8", "9", "0"],
+    ["x", "v", "l", "c", "k", "h", "g", "f", "q"],
+    ["u", "i", "a", "e", "s", "n", "r", "t", "d"],
+    ["ü", "ö", "ä", "p", "b", "m", ", ", ".", "j"],
+]
 
 
 class Size:
     """Class storing the size of a zone / window / screen /..."""
     def __init__(self):
-        w = 0
-        h = 0
+        self.w = 0
+        self.h = 0
 
     def __str__(self):
         return "size: " + str(self.w) + "," + str(self.h)
@@ -429,7 +434,7 @@ class State:
 
         # state
         self.mode = []
-        self.zone = Zone()
+        self.zone = draw.Zone()
         self.grid = Size()
         self.grid.w = 1
         self.grid.h = 1
@@ -437,7 +442,11 @@ class State:
         self.grid_nav = None # or "row", or "col"
 
     def __str__(self):
-        return "state: \n" + "  " + str(self.zone) + "  grid " + str(self.grid) + " mode " + ",".join([str(i.__class__.__name__) for i in self.mode])
+        r = "state: \n" + \
+            "  zone " + str(self.zone) + \
+            "  grid " + str(self.grid) + \
+            " mode " + ",".join([str(i.__class__.__name__) for i in self.mode])
+        return r
 
     def copy(self):
         """Create a copy of this state."""
@@ -449,7 +458,8 @@ class State:
         exclude.update(["nav", "screen", "mode"])
 
         for attr in dir(self):
-            if attr in exclude: continue
+            if attr in exclude:
+                continue
             setattr(c, attr, copy.deepcopy(getattr(self, attr)))
         return c
 
@@ -465,12 +475,13 @@ class State:
     def exit_mode(self, all=False):
         """Leave the currently active mode"""
 
-        while len(self.mode) > 0:
+        while self.mode:
             self.mode[-1].exit(self)
             self.mode = self.mode[:-1]
-            if not all: break
+            if not all:
+                break
 
-        if len(self.mode) > 0:
+        if self.mode:
             self.mode[-1].enter(self)
         else:
             self.nav.vis.disable()
@@ -480,7 +491,7 @@ class State:
     def update(self, undoable=True):
         """Update the visualization and set the right mode"""
 
-        if len(self.mode) > 0:
+        if self.mode:
             self.mode[-1].apply(self)
 
         if undoable:
@@ -515,10 +526,11 @@ class Mode:
 
         state.nav.draw(state.zone)
 
-    def get_bindings(self, state, bindings={}):
+    def get_bindings(self, _state, bindings={}):
         """Calculate the mapping from a key to an action for this mode.
         The dict 'bindings' contains binding of outer modes.
-        If the mode allows to use functions from the outer modes, those should also appear in the returned mapping."""
+        If the mode allows to use functions from the outer modes,
+        those should also appear in the returned mapping."""
 
         bindings.update(self.conf)
         return bindings
@@ -592,7 +604,7 @@ class GridMode(Mode):
             for y, row in enumerate(dart_nav_chars):
                 for x, key in enumerate(row):
                     # uggly hack
-                    new[key] = [cell_select(x,y), warp]
+                    new[key] = [cell_select(x, y), warp]
 
         bindings.update(new)
         return bindings
@@ -603,7 +615,8 @@ class GridMode(Mode):
         enabled = state.nav.vis.active
 
         # do we need this?
-        if not enabled: return
+        if not enabled:
+            return
 
         state.nav.vis.disable()
         self.update_bindings(state)
@@ -615,8 +628,10 @@ class GridMode(Mode):
             if state.zone.w < state.grid.w * 30 and not first_y and not last_y:
                 horizontal_until_x = state.zone.left() - 10
 
-            if first_y or last_y or state.grid_nav == None or state.grid_nav == "row" or state.grid_nav == "dart":
-                h = Line()
+            if first_y or last_y or state.grid_nav is None or \
+                    state.grid_nav == "row" or state.grid_nav == "dart":
+
+                h = draw.Line()
                 h.x1 = state.zone.left()
                 h.x2 = horizontal_until_x
 
@@ -631,8 +646,10 @@ class GridMode(Mode):
             if state.zone.h < state.grid.h * 30 and not first_x and not last_x:
                 vertical_until_y = state.zone.top() - 10
 
-            if first_x or last_x or state.grid_nav == None or state.grid_nav == "col" or state.grid_nav == "dart":
-                v = Line()
+            if first_x or last_x or state.grid_nav is None or \
+                    state.grid_nav == "col" or state.grid_nav == "dart":
+
+                v = draw.Line()
                 v.x1 = state.zone.left() + gx * state.zone.w / state.grid.w
                 v.x2 = v.x1
 
@@ -643,34 +660,36 @@ class GridMode(Mode):
         if state.grid_nav == "row":
             delta = state.zone.h / state.grid.h
             for gy in range(state.grid.h):
-                l = Label()
+                l = draw.Label()
                 l.x = state.zone.left() + 0.5 * state.zone.w / state.grid.w
                 l.y = state.zone.top() + (gy + 0.5) * delta
                 l.text = str(grid_nav_chars[gy])
 
-                if l.size(state.nav.vis)[1] > delta: break
+                if l.size(state.nav.vis)[1] > delta:
+                    break
                 state.nav.draw(l)
 
         if state.grid_nav == "col":
             delta = state.zone.w / state.grid.w
             for gx in range(state.grid.w):
-                l = Label()
+                l = draw.Label()
                 l.x = state.zone.left() + (gx + 0.5) * delta
                 l.y = state.zone.top() + 0.5 * state.zone.h / state.grid.h
                 l.text = str(grid_nav_chars[gx])
 
-                if l.size(state.nav.vis)[0] > delta: break
+                if l.size(state.nav.vis)[0] > delta:
+                    break
                 state.nav.draw(l)
 
         if state.grid_nav == "dart":
             delta_x = state.zone.w / state.grid.w
             delta_y = state.zone.h / state.grid.h
-            l = Label()
+            l = draw.Label()
             l.text = "Ig"
             if max(l.size(state.nav.vis)) < min(delta_x, delta_y):
                 for gx in range(state.grid.w):
                     for gy in range(state.grid.h):
-                        l = Label()
+                        l = draw.Label()
                         l.x = state.zone.left() + (gx + 0.5) * delta_x
                         l.y = state.zone.top() + (gy + 0.5) * delta_y
                         l.text = str(dart_nav_chars[gy][gx])
@@ -686,11 +705,11 @@ class MarkMode(Mode):
     - otherwise: pressing a letter moves the pointer to the saved position
     """
 
-    def __init__(self, nav, conf, record = False):
+    def __init__(self, nav, conf, record=False):
         self.nav = nav
         _marks = self.marks()
 
-        if len(_marks) == 0:
+        if not _marks:
             try:
                 with open(conf_dir + "marks", "r") as f:
                     _marks.update(json.loads(f.read()))
@@ -707,14 +726,14 @@ class MarkMode(Mode):
                     _marks = self.marks()
 
                     win = self.nav.input.window()
-                    msg=("enter a filter for mark " + str(key) + "\n" +
-                        "leave empty for global mark" + "\n\n" +
-                        str(win).lower()
-                    )
+                    msg = ("enter a filter for mark " + str(key) + "\n" +
+                           "leave empty for global mark" + "\n\n" +
+                           str(win).lower()
+                          )
                     cond = nav.input_dialog(msg) or ""
 
                     if cond:
-                        _marks[cond][key] = (state.zone.x,state.zone.y)
+                        _marks[cond][key] = (state.zone.x, state.zone.y)
 
                 register = annotate(register, "register '" + key + "'")
                 conf[key] = [register, self.save, exit_mode]
@@ -734,7 +753,8 @@ class MarkMode(Mode):
         result = {}
         win = str(self.nav.input.window()).lower()
         for cond, bindings in self.marks().items():
-            if not cond.lower() in str(win): continue
+            if not cond.lower() in str(win):
+                continue
             result.update(bindings)
         print(result)
         return result
@@ -747,25 +767,24 @@ class MarkMode(Mode):
 
         bindings = self.bindings()
 
-        if len(bindings) == 0:
-            l = Label()
+        if not bindings:
+            l = draw.Label()
             l.x = state.screen.w / 2
             l.y = state.screen.h / 2
             l.text = "no marks"
             state.nav.draw(l)
 
-
-
         for key, coord in bindings.items():
-            l = Label()
+            l = draw.Label()
             l.x = coord[0]
             l.y = coord[1]
             l.text = key
             state.nav.draw(l)
 
-        if enabled: state.nav.vis.enable()
+        if enabled:
+            state.nav.vis.enable()
 
-    def save(self, state):
+    def save(self, _state):
         """save the current marks in a file in the config dir"""
         with open(conf_dir + "marks", "w") as f:
             f.write(json.dumps(self.marks(), indent=4, sort_keys=True))
@@ -779,8 +798,8 @@ class Navigator:
 
     def __init__(self):
         # components
-        self.vis = Drawing()
-        self.input = Input()
+        self.vis = draw.Drawing()
+        self.input = input.Input()
 
         # state
         self.state = State(self)
@@ -801,14 +820,14 @@ class Navigator:
 
         for key, action in conf.items():
             if start in action:
-                def fn(self=self, action=action):
+                def upd(self=self, action=action):
                     """start command"""
 
                     self.state.enter_mode(Mode(self, conf))
                     for act in action:
                         act(self.state)
 
-                self.input.register_key(key, fn, _global=True)
+                self.input.register_key(key, upd, _global=True)
 
 
     def __del__(self):
@@ -817,7 +836,8 @@ class Navigator:
     def do(self, state):
         """Add the current step to the history"""
         print("do " + str(state))
-        # TODO: only add if change, something like if len(self.history) == 0: state != self.history[-1]:
+        # TODO: only add if change, something like
+        #   if len(self.history) == 0: state != self.history[-1]:
         self.history.append(state.copy())
 
 
@@ -850,10 +870,6 @@ class Navigator:
 
 
 if __name__ == '__main__':
-    n = Navigator()
-
+    Navigator()
     print("started ...")
-
-
-
 
