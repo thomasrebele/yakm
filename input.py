@@ -30,6 +30,7 @@ keys_to_code = {
     '%':'percent', '.':'period', '+':'plus', '?':'question', '"':'quotedbl',
     ';':'semicolon', '/':'slash', ' ':'space', '\t':'Tab', '_':'underscore',
     'ü':'udiaeresis', 'ö':'odiaeresis', 'ä':'adiaeresis', 'ß':'ssharp',
+    "PageDown": "Next", "PageUp": "Prior"
 }
 
 
