@@ -19,33 +19,6 @@ from collections import defaultdict
 import draw
 import input_devices
 
-# implemented actions:
-
-# start
-# end
-
-# warp
-# click 1
-# drag 1
-
-# move-left .5
-# move-up .5
-# move-down .5
-# move-right .5
-# cursorzoom <w> <h>: center rectangle around cursor
-
-# grid 2x3
-# cell-select 1x3
-# history-back
-# clear: remove keybindings
-
-# todo
-
-# daemonize: execute in background
-# grid-nav off
-# grid-nav toggle
-
-
 try:
     import tkinter
     import tkinter.simpledialog
@@ -154,53 +127,47 @@ def click(button):
 def drag(button):
     """Start or stop dragging. This simulates a pressed mouse button"""
 
-    def upd(state, button=button):
-        """drag action"""
+    def _upd(state, button=button):
         actions = ["release"] if state.drag else ["press"]
         state.drag = not state.drag
         state.nav.click(button, actions=actions)
-    return annotate(upd, "drag " + str(button))
+    return annotate(_upd, "drag " + str(button))
 
 def move_to(x_coord, y_coord):
     """Move the center of the zone to the specified coordinates"""
 
-    def upd(state, x_coord=x_coord, y_coord=y_coord):
-        """move_to action"""
+    def _upd(state, x_coord=x_coord, y_coord=y_coord):
         state.zone.x = x_coord
         state.zone.y = y_coord
-    return annotate(upd, "move_to " + str(x_coord) + " " + str(y_coord))
+    return annotate(_upd, "move_to " + str(x_coord) + " " + str(y_coord))
 
 def move_left(ratio):
     """Move the zone left by ratio*width pixels"""
 
-    def upd(state, ratio=ratio):
-        """move_left action"""
+    def _upd(state, ratio=ratio):
         state.zone.x = max(0, state.zone.x - state.zone.w * ratio)
-    return annotate(upd, "move_left " + str(ratio))
+    return annotate(_upd, "move_left " + str(ratio))
 
 def move_right(ratio):
     """Move the zone right by ratio*width pixels"""
 
-    def upd(state, ratio=ratio):
-        """move_right action"""
+    def _upd(state, ratio=ratio):
         state.zone.x = min(state.screen.w, state.zone.x + state.zone.w * ratio)
-    return annotate(upd, "move_right " + str(ratio))
+    return annotate(_upd, "move_right " + str(ratio))
 
 def move_up(ratio):
     """Move the zone up by ratio*height pixels"""
 
-    def upd(state, ratio=ratio):
-        """move_up action"""
+    def _upd(state, ratio=ratio):
         state.zone.y = max(0, state.zone.y - state.zone.h * ratio)
-    return annotate(upd, "move_up " + str(ratio))
+    return annotate(_upd, "move_up " + str(ratio))
 
 def move_down(ratio):
     """Move the zone down by ratio*height pixels"""
 
-    def upd(state, ratio=ratio):
-        """move_down action"""
+    def _upd(state, ratio=ratio):
         state.zone.y = min(state.screen.h, state.zone.y + state.zone.h * ratio)
-    return annotate(upd, "move_down " + str(ratio))
+    return annotate(_upd, "move_down " + str(ratio))
 
 def full(state):
     """Make the zone use the whole screen"""
@@ -214,41 +181,37 @@ def cursorzoom(width, height):
     """Set the size of the zone to width and heigth,
     and move it so that the pointer is at the center of the zone"""
 
-    def upd(state, width=width, height=height):
-        """cursorzoom action"""
+    def _upd(state, width=width, height=height):
         state.zone.w = width
         state.zone.h = height
         pointer = state.nav.pointer()
         state.zone.x = pointer.x
         state.zone.y = pointer.y
-    return annotate(upd, "cursorzoom " + str(width) + " " + str(height))
+    return annotate(_upd, "cursorzoom " + str(width) + " " + str(height))
 
 def enlarge(factor):
     """Multiply the sides of the zone by factor.
     The center of the zone stays at the same position"""
 
-    def upd(state, factor=factor):
-        """enlarge action"""
+    def _upd(state, factor=factor):
         state.zone.w *= factor
         state.zone.h *= factor
-    return annotate(upd, "enlarge " + str(factor))
+    return annotate(_upd, "enlarge " + str(factor))
 
 def grid(width, height):
     """Activate grid mode with a width x heigth cells"""
 
-    def upd(state, width=width, heigth=height):
-        """grid action"""
+    def _upd(state, width=width, heigth=height):
         state.grid.w = width
         state.grid.h = heigth
         state.enter_mode(GridMode(state.nav, configuration))
 
-    return annotate(upd, "grid " + str(width) + " " + str(height))
+    return annotate(_upd, "grid " + str(width) + " " + str(height))
 
 def cell_select(col, row):
     """Set the zone to the cell with grid coordinates (col, row)"""
 
-    def upd(state, col=col, row=row):
-        """cell_select action"""
+    def _upd(state, col=col, row=row):
         print(state)
         if col > state.grid.w or row > state.grid.h:
             return
@@ -261,7 +224,7 @@ def cell_select(col, row):
         state.zone.x = left + state.zone.w/2
         state.zone.y = top + state.zone.h/2
 
-    return annotate(upd, "cell_select " + str(col) + " " + str(row))
+    return annotate(_upd, "cell_select " + str(col) + " " + str(row))
 
 # grid navigation
 def grid_nav(state):
@@ -274,8 +237,7 @@ def grid_nav(state):
 def row_select(row):
     """Select the specified row and activate column selection"""
 
-    def upd(state, row=row):
-        """row_select action"""
+    def _upd(state, row=row):
         print("selecting row " +str(row))
         top = state.zone.top() + row / state.grid.h  * state.zone.h
         state.zone.y = top + 0.5 * state.zone.h / state.grid.h
@@ -284,13 +246,12 @@ def row_select(row):
         # switch to col selection mode
         state.grid_nav = "col"
 
-    return annotate(upd, "row_select " + str(row))
+    return annotate(_upd, "row_select " + str(row))
 
 def col_select(col):
     """Select the specified col"""
 
-    def upd(state, col=col):
-        """col_select action"""
+    def _upd(state, col=col):
         print("selecting col " +str(col))
         left = state.zone.left() + col / state.grid.w  * state.zone.w
         state.zone.x = left + 0.5 * state.zone.w / state.grid.w
@@ -302,7 +263,7 @@ def col_select(col):
         grid_nav(state)
 
 
-    return annotate(upd, "col_select " + str(col))
+    return annotate(_upd, "col_select " + str(col))
 
 # dart navigation
 def dart_nav(state):
@@ -540,7 +501,7 @@ class Mode:
 
         for key, action in bindings.items():
             # use state of navigation, so that we can undo actions
-            def upd(action=action, nav=state.nav):
+            def _upd(action=action, nav=state.nav):
                 """wrap action in a lambda function"""
 
                 for act in action:
@@ -549,8 +510,8 @@ class Mode:
                 if not history_back in action:
                     nav.state.update()
 
-            upd = annotate(upd, get_cmd(action))
-            state.nav.input.register_key(key, upd)
+            _upd = annotate(_upd, get_cmd(action))
+            state.nav.input.register_key(key, _upd)
 
     def enter(self, state):
         """This method is called when the user activates this mode"""
@@ -816,8 +777,7 @@ class Navigator:
 
         for key, action in configuration.items():
             if start in action:
-                def upd(self=self, action=action):
-                    """start command"""
+                def _upd(self=self, action=action):
 
                     self.state.enter_mode(Mode(self, configuration))
                     for act in action:
@@ -825,7 +785,7 @@ class Navigator:
 
                     self.state.update()
 
-                self.input.register_key(key, upd, _global=True)
+                self.input.register_key(key, _upd, _global=True)
 
 
     def __del__(self):
@@ -834,8 +794,9 @@ class Navigator:
     def do_step(self, state):
         """Add the current step to the history"""
         print("do " + str(state))
-        # TODO: only add if change, something like
-        #   if len(self.history) == 0: state != self.history[-1]:
+        # TODO: only add state if it has changed
+        # something like
+        #    if len(self.history) == 0: state != self.history[-1]:
         self.history.append(state.copy())
 
 
