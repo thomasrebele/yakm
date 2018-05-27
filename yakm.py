@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 """
 "yakm" stands for Yet Another Keyboard Mouse (or, alternatively, You Are Killing my Mouse).
@@ -12,7 +13,7 @@ import string
 import json
 
 import pathlib
-from os.path import expanduser
+from os.path import expanduser, isfile
 from collections import defaultdict
 
 
@@ -315,6 +316,7 @@ for i in [warp, start, clear, info, exit_mode, end, grid_nav, history_back, full
 
 
 conf_dir = "~/.yakm/"
+conf_file = "example_neo.conf" # TODO: resolve configuration path
 
 # setup configuration dir
 conf_dir = expanduser(conf_dir)
@@ -322,17 +324,21 @@ pathlib.Path(conf_dir).mkdir(parents=True, exist_ok=True)
 
 # load configuration from file
 configuration = {}
-with open("example_neo.conf", "r") as f_config:
-    # we limit exec(...) to the above defined yakm commands
-    exec_globals = {"__builtins__": None}
-    _globals = globals()
-    for i in commands:
-        exec_globals[i] = _globals[i]
 
-    # read configuration
-    conf_str = f_config.read()
-    exec(conf_str, exec_globals, configuration)
 
+if isfile(conf_file):
+    with open(conf_file, "r") as f_config:
+        # we limit exec(...) to the above defined yakm commands
+        exec_globals = {"__builtins__": None}
+        _globals = globals()
+        for i in commands:
+            exec_globals[i] = _globals[i]
+
+        # read configuration
+        conf_str = f_config.read()
+        exec(conf_str, exec_globals, configuration)
+else:
+    print("WARNING: yakm could not open configuration file " + str(conf_file))
 
 ################################################################################
 # behavior
