@@ -273,9 +273,8 @@ def dart_nav(state):
     """Start dart grid navigation"""
 
     # switch to grid mode
-    global dart_nav_chars
-    grid_width = len(dart_nav_chars[0])
-    grid_height = len(dart_nav_chars)
+    grid_width = len(configuration["dart_nav_chars"][0])
+    grid_height = len(configuration["dart_nav_chars"])
     grid(grid_width, grid_height)(state)
 
     # switch to dart selection mode
@@ -335,20 +334,9 @@ with open("example_neo.conf", "r") as f_config:
     exec(conf_str, exec_globals, configuration)
 
 
-# QWERTY layout
-grid_nav_chars = ["q", "w", "e", "r", "t", "y", "u", "i", "i", "o", "p"]
-
-# Neo2 layout
-
-dart_nav_chars = [
-    ["1", "2", "3", "4", "6", "7", "8", "9", "0"],
-    ["x", "v", "l", "c", "k", "h", "g", "f", "q"],
-    ["u", "i", "a", "e", "s", "n", "r", "t", "d"],
-    ["ü", "ö", "ä", "p", "b", "m", ", ", ".", "j"],
-]
-
-grid_nav_chars = dart_nav_chars[1]
-
+################################################################################
+# behavior
+################################################################################
 
 class Size:
     """Class storing the size of a zone / window / screen /..."""
@@ -531,16 +519,16 @@ class GridMode(Mode):
     def get_bindings(self, state, bindings=None):
         new_bindings = {}
         if state.grid_nav == "row":
-            for row, key in enumerate(grid_nav_chars):
+            for row, key in enumerate(configuration["grid_nav_chars"]):
                 new_bindings[key] = [row_select(row)]
 
 
         if state.grid_nav == "col":
-            for col, key in enumerate(grid_nav_chars):
+            for col, key in enumerate(configuration["grid_nav_chars"]):
                 new_bindings[key] = [col_select(col)]
 
         if state.grid_nav == "dart":
-            for grid_row, keyboard_row in enumerate(dart_nav_chars):
+            for grid_row, keyboard_row in enumerate(configuration["dart_nav_chars"]):
                 for grid_col, key in enumerate(keyboard_row):
                     # uggly hack
                     new_bindings[key] = [cell_select(grid_col, grid_row), warp]
@@ -605,7 +593,7 @@ class GridMode(Mode):
                 label = draw.Label()
                 label.x = state.zone.left() + 0.5 * state.zone.w / state.grid.w
                 label.y = state.zone.top() + (grid_row + 0.5) * delta
-                label.text = str(grid_nav_chars[grid_row])
+                label.text = str(configuration["grid_nav_chars"][grid_row])
 
                 if label.size(state.nav.vis)[1] > delta:
                     break
@@ -617,7 +605,7 @@ class GridMode(Mode):
                 label = draw.Label()
                 label.x = state.zone.left() + (grid_col + 0.5) * delta
                 label.y = state.zone.top() + 0.5 * state.zone.h / state.grid.h
-                label.text = str(grid_nav_chars[grid_col])
+                label.text = str(configuration["grid_nav_chars"][grid_col])
 
                 if label.size(state.nav.vis)[0] > delta:
                     break
@@ -634,7 +622,7 @@ class GridMode(Mode):
                         label = draw.Label()
                         label.x = state.zone.left() + (grid_col + 0.5) * delta_x
                         label.y = state.zone.top() + (grid_row + 0.5) * delta_y
-                        label.text = str(dart_nav_chars[grid_row][grid_col])
+                        label.text = str(configuration["dart_nav_chars"][grid_row][grid_col])
                         state.nav.draw(label)
 
         state.nav.vis.enable()
