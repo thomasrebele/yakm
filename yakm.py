@@ -18,7 +18,7 @@ from collections import defaultdict
 
 
 import draw
-import input
+import input_devices
 
 # implemented actions:
 
@@ -799,7 +799,7 @@ class Navigator:
     def __init__(self):
         # components
         self.vis = draw.Drawing()
-        self.input = input.Input()
+        self.input = input_devices.Input()
 
         # state
         self.state = State(self)
