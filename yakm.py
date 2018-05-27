@@ -823,6 +823,8 @@ class Navigator:
                     for act in action:
                         act(self.state)
 
+                    self.state.update()
+
                 self.input.register_key(key, upd, _global=True)
 
 
