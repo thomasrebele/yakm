@@ -120,6 +120,7 @@ class Input:
                 #print("\nrelease: " + str(evt) + "\n")
                 pass
         except Exception as e:
+            print("yakm error: an exception occurred while handling a key event")
             traceback.print_exc()
             self.ungrab_keyboard()
             for k in self.key_bindings():

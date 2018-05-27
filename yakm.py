@@ -77,7 +77,7 @@ prev_def = set(dir())
 prev_def.update(dir())
 
 ################################################################################
-# actions
+# commands
 ################################################################################
 
 def warp(state):
@@ -268,9 +268,8 @@ def col_select(col):
 
     return annotate(_upd, "col_select " + str(col))
 
-# dart navigation
 def dart_nav(state):
-    """Start dart grid navigation"""
+    """Enter grid mode with dart navigation"""
 
     # switch to grid mode
     grid_width = len(configuration["dart_nav_chars"][0])
@@ -299,6 +298,7 @@ def apply_mark(state):
 
     state.enter_mode(MarkMode(state.nav, configuration["bindings"]))
 
+###
 
 commands = set(dir()).difference(prev_def)
 print(commands)
