@@ -73,6 +73,9 @@ def iter_first_last(iterator):
     yield prev, first, True
 
 
+prev_def = set(dir())
+prev_def.update(dir())
+
 ################################################################################
 # actions
 ################################################################################
@@ -85,7 +88,7 @@ def warp(state):
 def start(state):
     """Start the navigation. Enters the default mode if no other mode is active"""
     if not state.mode:
-        state.enter_mode(Mode(state.nav, configuration))
+        state.enter_mode(Mode(state.nav, configuration["bindings"]))
 
     state.nav.grab_keyboard()
 
@@ -204,7 +207,7 @@ def grid(width, height):
     def _upd(state, width=width, heigth=height):
         state.grid.w = width
         state.grid.h = heigth
-        state.enter_mode(GridMode(state.nav, configuration))
+        state.enter_mode(GridMode(state.nav, configuration["bindings"]))
 
     return annotate(_upd, "grid " + str(width) + " " + str(height))
 
@@ -289,13 +292,17 @@ def record_mark(state):
     """Save the current pointer position as a mark
     associated with the next pressed letter"""
 
-    state.enter_mode(MarkMode(state.nav, configuration, record=True))
+    state.enter_mode(MarkMode(state.nav, configuration["bindings"], record=True))
 
 def apply_mark(state):
     """On the next pressed letter, move the zone
     and the pointer to the position saved for that letter"""
 
-    state.enter_mode(MarkMode(state.nav, configuration))
+    state.enter_mode(MarkMode(state.nav, configuration["bindings"]))
+
+
+commands = set(dir()).difference(prev_def)
+print(commands)
 
 
 # annotate functions without arguments
@@ -307,52 +314,31 @@ for i in [warp, start, clear, info, exit_mode, end, grid_nav, history_back, full
 # configuration
 ################################################################################
 
+
 conf_dir = "~/.yakm/"
 
+# setup configuration dir
 conf_dir = expanduser(conf_dir)
 pathlib.Path(conf_dir).mkdir(parents=True, exist_ok=True)
 
-configuration = {
-    "u": [move_left(0.5), warp],
-    "e": [move_right(0.5), warp],
-    "i": [move_up(0.5), warp],
-    "a": [move_down(0.5), warp],
+# load configuration from file
+configuration = {}
+with open("example_neo.conf", "r") as f_config:
+    # we limit exec(...) to the above defined yakm commands
+    exec_globals = {"__builtins__": None}
+    _globals = globals()
+    for i in commands:
+        exec_globals[i] = _globals[i]
 
-    "n": [click(1)],
-    "r": [click(2)],
-    "t": [click(3)],
-    "PageUp": [click(4)],
-    "PageDown": [click(5)],
+    # read configuration
+    conf_str = f_config.read()
+    exec(conf_str, exec_globals, configuration)
 
-
-    "shift+n": [drag(1)],
-    "shift+r": [drag(2)],
-    "shift+t": [drag(3)],
-
-    "b" : [grid(9, 9), grid_nav],
-    "m" : [record_mark],
-    "period" : [apply_mark],
-
-    ",": [cursorzoom(342, 192)],
-    "mod4+r": [full],
-    "p": [enlarge(1.5)],
-    "mod4+a": [start, cursorzoom(342, 192), grid(9, 9), grid_nav, apply_mark],
-    "mod4+e": [start, cursorzoom(342, 192), grid(9, 9), grid_nav],
-    "mod4+s": [start, full, dart_nav],
-    "s": [dart_nav],
-
-    "ctrl+shift+i": [info],
-
-    "o": [history_back, warp],
-    "z": [exit_mode],
-    "Escape": [end],
-}
 
 # QWERTY layout
 grid_nav_chars = ["q", "w", "e", "r", "t", "y", "u", "i", "i", "o", "p"]
 
 # Neo2 layout
-grid_nav_chars = ["x", "v", "l", "c", "w", "k", "h", "g", "f", "q"]
 
 dart_nav_chars = [
     ["1", "2", "3", "4", "6", "7", "8", "9", "0"],
@@ -360,6 +346,8 @@ dart_nav_chars = [
     ["u", "i", "a", "e", "s", "n", "r", "t", "d"],
     ["ü", "ö", "ä", "p", "b", "m", ", ", ".", "j"],
 ]
+
+grid_nav_chars = dart_nav_chars[1]
 
 
 class Size:
@@ -772,11 +760,11 @@ class Navigator:
         self.undraw = self.vis.undraw
 
 
-        for key, action in configuration.items():
+        for key, action in configuration["bindings"].items():
             if start in action:
                 def _upd(self=self, action=action):
 
-                    self.state.enter_mode(Mode(self, configuration))
+                    self.state.enter_mode(Mode(self, configuration["bindings"]))
                     for act in action:
                         act(self.state)
 
