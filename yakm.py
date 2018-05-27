@@ -543,18 +543,15 @@ class GridMode(Mode):
     def get_bindings(self, state, bindings=None):
         new_bindings = {}
         if state.grid_nav == "row":
-            print("apply row bindings")
             for row, key in enumerate(grid_nav_chars):
                 new_bindings[key] = [row_select(row)]
 
 
         if state.grid_nav == "col":
-            print("apply col bindings")
             for col, key in enumerate(grid_nav_chars):
                 new_bindings[key] = [col_select(col)]
 
         if state.grid_nav == "dart":
-            print("apply dart bindings")
             for grid_row, keyboard_row in enumerate(dart_nav_chars):
                 for grid_col, key in enumerate(keyboard_row):
                     # uggly hack
