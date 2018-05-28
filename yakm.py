@@ -13,7 +13,7 @@ import string
 import json
 
 import pathlib
-from os.path import expanduser, isfile
+import os.path
 from collections import defaultdict
 
 
@@ -316,17 +316,18 @@ for i in [warp, start, clear, info, exit_mode, end, grid_nav, history_back, full
 
 
 conf_dir = "~/.yakm/"
-conf_file = "example_neo.conf" # TODO: resolve configuration path
+script_dir = os.path.dirname(os.path.realpath(__file__))
+conf_file = script_dir + "/example_neo.conf" # TODO: resolve configuration path
 
 # setup configuration dir
-conf_dir = expanduser(conf_dir)
+conf_dir = os.path.expanduser(conf_dir)
 pathlib.Path(conf_dir).mkdir(parents=True, exist_ok=True)
 
 # load configuration from file
 configuration = {}
 
 
-if isfile(conf_file):
+if os.path.isfile(conf_file):
     with open(conf_file, "r") as f_config:
         # we limit exec(...) to the above defined yakm commands
         exec_globals = {"__builtins__": None}
