@@ -76,9 +76,9 @@ In that case, you have to specify it in the configuration file:
 Caveats
 ---
 
-* Right click does not work in some programs (e.g., evince)
+* Right click does not work in some programs (e.g., Evince)
 * Left click does not work in some programs (e.g., XFCE panel)
+* Drag and drop does not work in some programs (e.g., Zotero)
 * Some commands of keynav are not yet implemented (e.g., grid-nav off/toggle, record, sh, cut-\*, ...)
 * The drawing module could be improved. Currently it uses the external command `xrefresh` to remove previously drawn lines. This causes a noticable flickering.
-
 

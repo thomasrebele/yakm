@@ -11,6 +11,8 @@ You can find more information in the readme.
 import copy
 import string
 import json
+import fcntl
+from sys import exit
 
 import pathlib
 import os.path
@@ -19,6 +21,16 @@ from collections import defaultdict
 
 import draw
 import input_devices
+
+# check whether another instance is already running (https://stackoverflow.com/a/384493/1562506)
+pid_file = '/tmp/yakm.pid'
+fp = open(pid_file, 'w')
+try:
+    fcntl.lockf(fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except IOError:
+    # another instance is running
+    print("Warning: another instance is already running, exiting")
+    exit(0)
 
 try:
     import tkinter
@@ -246,6 +258,8 @@ def row_select(row):
         top = state.zone.top() + row / state.grid.h  * state.zone.h
         state.zone.y = top + 0.5 * state.zone.h / state.grid.h
         state.zone.h = max(state.grid.h, state.zone.h / state.grid.h)
+
+        warp(state)
 
         # switch to col selection mode
         state.grid_nav = "col"
