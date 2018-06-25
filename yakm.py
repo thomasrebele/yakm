@@ -305,7 +305,7 @@ def apply_mark(state):
     state.enter_mode(MarkMode(state.nav, configuration["bindings"]))
 
 
-def key(to_press):
+def press_key(to_press):
     """Type a key or a key combination"""
 
     def _upd(state, key=to_press):

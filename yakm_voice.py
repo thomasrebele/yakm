@@ -9,6 +9,54 @@ from yakm import *
 import draw
 import input_devices
 
+### commands
+
+def key(to_press):
+    """Type a key or a key combination"""
+
+    def _upd(state, key=to_press):
+        key = "+".join(list(state.modifiers.keys()) + [str(key)])
+        print("pressing key " + str(key))
+        call(["xdotool", "key", str(key)])
+
+    return annotate(_upd, "key " + str(to_press))
+
+commands.update(["key"])
+print(commands)
+
+class VoiceMode(Mode):
+    def __init__(self, nav, conf):
+        super().__init__(nav, conf)
+        self.reset_mods()
+
+    def reset_mods(self):
+        self.nav.state.modifiers = {}
+
+    def process(self, keys):
+        if len(keys) == 0:
+            return
+
+        modifiers = self.nav.state.modifiers
+        cmd = keys[0]
+        if cmd in configuration["modifiers"]:
+            mod = configuration["modifiers"][cmd]
+            try:
+                modifiers[mod] = True
+                self.process(keys[1:])
+            finally:
+                del modifiers[mod]
+
+        else:
+            bindings = self.nav.state.get_current_bindings()
+            if cmd in bindings.keys():
+                action = bindings[cmd]
+                for act in action:
+                    act(self.nav.state)
+            else:
+                print("I don't understand '" + str(cmd) + "'")
+
+
+
 
 
 
@@ -22,7 +70,8 @@ class VoiceNavigator(Navigator):
         self.grab_keyboard = lambda: None
         self.ungrab_keyboard = lambda: None
 
-        self.state.enter_mode(Mode(self, configuration["bindings"]), grab_keyboard=False)
+        voice_mode = VoiceMode(self, configuration["bindings"])
+        self.state.enter_mode(voice_mode, grab_keyboard=False)
 
         while True:
             try:
@@ -37,12 +86,7 @@ class VoiceNavigator(Navigator):
             print(">" + str(line))
 
             # execute command
-            for cmd in line.split(' '):
-                bindings = self.state.get_current_bindings()
-                if cmd in bindings.keys():
-                    action = bindings[cmd]
-                    for act in action:
-                        act(self.state)
+            voice_mode.process(line.split(' '))
 
         # TODO: exit on ctrl+c
         self.vis.stop()
@@ -72,6 +116,7 @@ if __name__ == '__main__':
             exec_globals = {"__builtins__": {"print" : print}}
             _globals = globals()
             for i in commands:
+                print("adding " + str(i))
                 exec_globals[i] = _globals[i]
 
             # read configuration
