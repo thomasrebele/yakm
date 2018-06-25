@@ -13,24 +13,15 @@ import string
 import json
 import fcntl
 from sys import exit
+from subprocess import call
 
 import pathlib
 import os.path
 from collections import defaultdict
 
-
 import draw
 import input_devices
 
-# check whether another instance is already running (https://stackoverflow.com/a/384493/1562506)
-pid_file = '/tmp/yakm.pid'
-fp = open(pid_file, 'w')
-try:
-    fcntl.lockf(fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
-except IOError:
-    # another instance is running
-    print("Warning: another instance is already running, exiting")
-    exit(0)
 
 try:
     import tkinter
@@ -95,7 +86,7 @@ prev_def.update(dir())
 
 def warp(state):
     """Move the mouse to the middle of the zone"""
-
+    print("moving mouse to " + str(state.zone.x) + " " + str(state.zone.y))
     state.nav.move(state.zone.x, state.zone.y)
 
 def start(state):
@@ -313,6 +304,17 @@ def apply_mark(state):
 
     state.enter_mode(MarkMode(state.nav, configuration["bindings"]))
 
+
+def key(to_press):
+    """Type a key or a key combination"""
+
+    def _upd(state, key=to_press):
+        call(["xdotool", "key", str(to_press)])
+
+    return annotate(_upd, "key " + str(to_press))
+
+
+
 ###
 
 commands = set(dir()).difference(prev_def)
@@ -323,37 +325,6 @@ print(commands)
 for i in [warp, start, clear, info, exit_mode, end, grid_nav, history_back, full]:
     i = annotate(i, i.__name__)
 
-
-################################################################################
-# configuration
-################################################################################
-
-
-conf_dir = "~/.yakm/"
-script_dir = os.path.dirname(os.path.realpath(__file__))
-conf_file = script_dir + "/example_neo.conf" # TODO: resolve configuration path
-
-# setup configuration dir
-conf_dir = os.path.expanduser(conf_dir)
-pathlib.Path(conf_dir).mkdir(parents=True, exist_ok=True)
-
-# load configuration from file
-configuration = {}
-
-
-if os.path.isfile(conf_file):
-    with open(conf_file, "r") as f_config:
-        # we limit exec(...) to the above defined yakm commands
-        exec_globals = {"__builtins__": None}
-        _globals = globals()
-        for i in commands:
-            exec_globals[i] = _globals[i]
-
-        # read configuration
-        conf_str = f_config.read()
-        exec(conf_str, exec_globals, configuration)
-else:
-    print("WARNING: yakm could not open configuration file " + str(conf_file))
 
 ################################################################################
 # behavior
@@ -417,11 +388,12 @@ class State:
             setattr(result, attr, copy.deepcopy(getattr(self, attr)))
         return result
 
-    def enter_mode(self, mode):
+    def enter_mode(self, mode, grab_keyboard=True):
         """Enter a mode"""
 
         self.nav.vis.enable()
-        self.nav.grab_keyboard()
+        if grab_keyboard:
+            self.nav.grab_keyboard()
 
         self.mode += [mode]
         mode.enter(self)
@@ -441,6 +413,12 @@ class State:
             self.nav.vis.disable()
             self.nav.vis.refresh()
             self.nav.ungrab_keyboard()
+
+    def get_current_bindings(self):
+        bindings = {}
+        for mode in self.mode:
+            bindings = mode.get_bindings(self, bindings)
+        return bindings
 
     def update(self, undoable=True):
         """Update the visualization and set the right mode"""
@@ -492,9 +470,7 @@ class Mode:
     def update_bindings(self, state):
         """Activate the key bindings of this mode"""
 
-        bindings = {}
-        for mode in state.mode:
-            bindings = mode.get_bindings(state, bindings)
+        bindings = state.get_current_bindings()
 
         for key, action in bindings.items():
             # use state of navigation, so that we can undo actions
@@ -741,12 +717,7 @@ class MarkMode(Mode):
             marks_file.write(json.dumps(self.marks(), indent=4, sort_keys=True))
 
 
-
-
 class Navigator:
-    """This class coordinates the input, the drawing, and the history.
-    It is the entry point of YAKM"""
-
     def __init__(self):
         # components
         self.vis = draw.Drawing()
@@ -761,26 +732,12 @@ class Navigator:
         self.click = self.input.click
         self.pointer = self.input.pointer
 
-        self.key_bindings = self.input.key_bindings
-        self.grab_keyboard = self.input.grab_keyboard
-        self.ungrab_keyboard = self.input.ungrab_keyboard
-
         self.draw = self.vis.draw
         self.undraw = self.vis.undraw
 
-
-        for key, action in configuration["bindings"].items():
-            if start in action:
-                def _upd(self=self, action=action):
-
-                    self.state.enter_mode(Mode(self, configuration["bindings"]))
-                    for act in action:
-                        act(self.state)
-
-                    self.state.update()
-
-                self.input.register_key(key, _upd, _global=True)
-
+        self.key_bindings = self.input.key_bindings
+        self.grab_keyboard = self.input.grab_keyboard
+        self.ungrab_keyboard = self.input.ungrab_keyboard
 
     def __del__(self):
         self.vis.stop()
@@ -793,7 +750,6 @@ class Navigator:
         #    if len(self.history) == 0: state != self.history[-1]:
         self.history.append(state.copy())
 
-
     def undo_step(self):
         """Undo last action, i.e., go back one step in history"""
         if len(self.history) > 1:
@@ -802,6 +758,28 @@ class Navigator:
             self.state.update(undoable=False)
 
             print("roling back to state " + str(self.state))
+
+
+
+class KeyNavigator(Navigator):
+    """This class coordinates the input, the drawing, and the history.
+    It is the entry point of YAKM"""
+
+    def __init__(self):
+        super().__init__()
+
+        # setup bindings
+        for key, action in configuration["bindings"].items():
+            if start in action:
+                def _upd(self=self, action=action):
+
+                    self.state.enter_mode(Mode(self, configuration["bindings"]))
+                    for act in action:
+                        act(self.state)
+
+                    self.state.update()
+
+                self.input.register_key(key, _upd, _global=True)
 
     def input_dialog(self, msg=""):
         """Ask the user to type in text"""
@@ -822,7 +800,55 @@ class Navigator:
         return text
 
 
+
+
+
+
 if __name__ == '__main__':
-    Navigator()
+
+    # check whether another instance is already running (https://stackoverflow.com/a/384493/1562506)
+    pid_file = '/tmp/yakm.pid'
+    fp = open(pid_file, 'w')
+    try:
+        fcntl.lockf(fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except IOError:
+        # another instance is running
+        print("Warning: another instance is already running, exiting")
+        exit(0)
+
+    ################################################################################
+    # read configuration
+    ################################################################################
+
+    conf_dir = "~/.yakm/"
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    conf_file = script_dir + "/example_neo.conf" # TODO: resolve configuration path
+
+    # setup configuration dir
+    conf_dir = os.path.expanduser(conf_dir)
+    pathlib.Path(conf_dir).mkdir(parents=True, exist_ok=True)
+
+    # load configuration from file
+    configuration = {}
+
+    if os.path.isfile(conf_file):
+        with open(conf_file, "r") as f_config:
+            # we limit exec(...) to the above defined yakm commands
+            exec_globals = {"__builtins__": None}
+            _globals = globals()
+            for i in commands:
+                exec_globals[i] = _globals[i]
+
+            # read configuration
+            conf_str = f_config.read()
+            exec(conf_str, exec_globals, configuration)
+    else:
+        print("WARNING: yakm could not open configuration file " + str(conf_file))
+
+    ################################################################################
+    # start
+    ################################################################################
+
+    KeyNavigator()
     print("started ...")
 

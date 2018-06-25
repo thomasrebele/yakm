@@ -185,7 +185,10 @@ class Input:
     def move(self, x, y):
         #fake_input(disp, X.MotionNotify, x=int(x), y=int(y))
         p = self.pointer()
-        disp.warp_pointer(int(x-p.x), int(y-p.y))
+        x = int(x-p.x)
+        y = int(y-p.y)
+        print("moving mouse to " + str(x) + " " + str(y))
+        disp.warp_pointer(x, y)
 
     def pointer(self):
         x = root.query_pointer().win_x
