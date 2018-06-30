@@ -5,6 +5,7 @@ import pathlib
 import os.path
 from collections import defaultdict
 from time import sleep
+from subprocess import call
 
 from yakm import *
 import draw
@@ -32,8 +33,13 @@ def start(state):
         voice_mode = VoiceMode(state.nav, configuration["bindings"])
         state.enter_mode(voice_mode, grab_keyboard=False)
 
+def dictate(state):
+    """Start the dictation mode"""
+    mode = DictateMode(state.nav, configuration["bindings"])
+    state.enter_mode(mode, grab_keyboard=False)
+    print("entered dictation mode")
 
-commands.update(["key"])
+commands.update(["key", "dictate"])
 print(commands)
 
 class VoiceMode(Mode):
@@ -44,7 +50,7 @@ class VoiceMode(Mode):
     def reset_mods(self):
         self.nav.state.modifiers = {}
 
-    def process(self, keys):
+    def process(self, state, keys):
         if len(keys) == 0:
             return
 
@@ -54,7 +60,7 @@ class VoiceMode(Mode):
             mod = configuration["modifiers"][cmd]
             try:
                 modifiers[mod] = True
-                self.process(keys[1:])
+                self.process(state, keys[1:])
             finally:
                 del modifiers[mod]
 
@@ -66,13 +72,31 @@ class VoiceMode(Mode):
                     act(self.nav.state)
 
                 sleep(0.05)
-                self.process(keys[1:])
+                self.process(state, keys[1:])
             else:
                 print("I don't understand '" + str(cmd) + "'")
 
 
 
+class DictateMode(Mode):
+    def __init__(self, nav, conf):
+        super().__init__(nav, conf)
+        self.first = True
 
+    def process(self, state, keys):
+        if len(keys) == 0:
+            return
+
+        if keys[0] in configuration["dictate_end"]:
+            state.exit_mode()
+            print("quitting dictation mode")
+        else:
+            text = str(" ".join(keys))
+            if not self.first:
+                text = " " + text
+            self.first = False
+
+            call(["xdotool", "type", text])
 
 
 class VoiceNavigator(Navigator):
@@ -104,7 +128,7 @@ class VoiceNavigator(Navigator):
             # execute command
             if self.state.mode:
                 mode = self.state.mode[-1]
-                mode.process(line.split(' '))
+                mode.process(self.state, line.split(' '))
             else:
                 if line in configuration["bindings"]:
                     action = configuration["bindings"][line]
