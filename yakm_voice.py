@@ -4,6 +4,7 @@
 import pathlib
 import os.path
 from collections import defaultdict
+from time import sleep
 
 from yakm import *
 import draw
@@ -15,11 +16,22 @@ def key(to_press):
     """Type a key or a key combination"""
 
     def _upd(state, key=to_press):
-        key = "+".join(list(state.modifiers.keys()) + [str(key)])
+        mods = list(state.modifiers.keys())
+        if "f_key" in mods:
+            if type(key) == int:
+                key = "F" + str(key)
+        key = "+".join(mods + [str(key)])
         print("pressing key " + str(key))
         call(["xdotool", "key", str(key)])
 
     return annotate(_upd, "key " + str(to_press))
+
+def start(state):
+    """Start the navigation. Enters the default mode if no other mode is active"""
+    if not state.mode:
+        voice_mode = VoiceMode(state.nav, configuration["bindings"])
+        state.enter_mode(voice_mode, grab_keyboard=False)
+
 
 commands.update(["key"])
 print(commands)
@@ -52,6 +64,9 @@ class VoiceMode(Mode):
                 action = bindings[cmd]
                 for act in action:
                     act(self.nav.state)
+
+                sleep(0.05)
+                self.process(keys[1:])
             else:
                 print("I don't understand '" + str(cmd) + "'")
 
@@ -70,8 +85,8 @@ class VoiceNavigator(Navigator):
         self.grab_keyboard = lambda: None
         self.ungrab_keyboard = lambda: None
 
-        voice_mode = VoiceMode(self, configuration["bindings"])
-        self.state.enter_mode(voice_mode, grab_keyboard=False)
+        # voice_mode = VoiceMode(self, configuration["bindings"])
+        # self.state.enter_mode(voice_mode, grab_keyboard=False)
 
         while True:
             try:
@@ -85,8 +100,21 @@ class VoiceNavigator(Navigator):
             line = line[:-1]
             print(">" + str(line))
 
+
             # execute command
-            voice_mode.process(line.split(' '))
+            if self.state.mode:
+                mode = self.state.mode[-1]
+                mode.process(line.split(' '))
+            else:
+                if line in configuration["bindings"]:
+                    action = configuration["bindings"][line]
+                    if action[0] == start:
+                        for act in action:
+                            act(self.state)
+                else:
+                    print("unknown command: " + str(line))
+
+
 
         # TODO: exit on ctrl+c
         self.vis.stop()
