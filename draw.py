@@ -72,84 +72,65 @@ class Zone(Action):
         return self.y+self.h/2
 
 
-#class Drawing:
-#    def __init__(self):
-#        self.actions = {}
-#        self.event = threading.Event()
-#        self.thread = threading.Thread(name='update',
-#                         target=self._run,
-#                         args=(self.event,))
-#        self.thread.start()
-#        self.active = False
-#        self.shutdown = False
-#
-#    def _run(self, e):
-#        while True:
-#            event_is_set = e.wait()
-#            print("thread: " + str(self.active))
-#            if self.shutdown:
-#                break
-#
-#            cnt = 0
-#            while self.active:
-#                sleep(0.04)
-#                cnt += 1
-#                if cnt % 50 == 0: self.refresh()
-#                try:
-#                    self.redraw()
-#                except Exception as e:
-#                    traceback.print_exc()
-#                    print(e)
-#                    return
-#            e.clear()
-#
-#    def text_extents(self, gc, text):
-#        if not hasattr(gc, "_extent_cache"): setattr(gc, "_extent_cache", {})
-#        cache = getattr(gc, "_extent_cache")
-#
-#        if text in cache: return cache[text]
-#        info = self.gc.query_text_extents(text.encode())._data
-#        cache[text] = info
-#        return info
-#
-#    def mouse_coords(self):
-#        data = self.root.query_pointer()._data
-#
-#        return Point(x=data["root_x"], y=data["root_y"])
-#
-#
-#    def refresh(self):
-#        # TODO: do this with xlib
-#        #call(["xrefresh"])
-#        pass
-#
-#    def redraw(self):
-#        for a in list(self.actions.keys()):
-#            a.draw(self)
-#        self.d.flush()
-#
-#    def enable(self):
-#        if not self.active:
-#            self.active = True
-#            self.event.set()
-#
-#    def disable(self):
-#        self.active = False
-#        self.refresh()
-#
-#    def stop(self):
-#        self.shutdown = True
-#        self.activate = False
-#        self.event.set()
-#
-#    def draw(self, action):
-#        self.actions[action] = True
-#
-#    def undraw(self, action=None):
-#        if not action:
-#            self.actions.clear()
-#        else:
-#            del self.actions[action]
+class Drawing:
+    def __init__(self):
+        self.actions = {}
+        self.event = threading.Event()
+        self.thread = threading.Thread(name='update',
+                         target=self._run,
+                         args=(self.event,))
+        self.thread.start()
+        self.active = False
+        self.shutdown = False
+
+    def _run(self, e):
+        while True:
+            event_is_set = e.wait()
+            print("thread: " + str(self.active))
+            if self.shutdown:
+                break
+
+            cnt = 0
+            while self.active:
+                sleep(0.04)
+                cnt += 1
+                if cnt % 50 == 0: self.refresh()
+                try:
+                    self.redraw()
+                except Exception as e:
+                    traceback.print_exc()
+                    print(e)
+                    return
+            e.clear()
+
+    def refresh(self):
+        pass
+
+    def redraw(self):
+        pass
+
+    def enable(self):
+        if not self.active:
+            self.active = True
+            self.event.set()
+
+    def disable(self):
+        self.active = False
+        self.refresh()
+
+    def stop(self):
+        self.shutdown = True
+        self.activate = False
+        self.event.set()
+
+    def draw(self, action):
+        self.actions[action] = True
+
+    def undraw(self, action=None):
+        if not action:
+            self.actions.clear()
+        else:
+            del self.actions[action]
 
 
 if __name__ == '__main__':

@@ -72,7 +72,7 @@ class Zone(base.Zone):
             int(self.h)
         )
 
-class Drawing:
+class Drawing(base.Drawing):
     def __init__(self):
         self.d = display.Display()
         font = self.d.open_font("-adobe-helvetica-*-r-normal-*-25-*-*-*-*-*-*-*")
@@ -102,34 +102,8 @@ class Drawing:
             font = font,
         )
 
-        self.actions = {}
-        self.event = threading.Event()
-        self.thread = threading.Thread(name='update',
-                         target=self._run,
-                         args=(self.event,))
-        self.thread.start()
-        self.active = False
-        self.shutdown = False
+        super().__init__()
 
-    def _run(self, e):
-        while True:
-            event_is_set = e.wait()
-            print("thread: " + str(self.active))
-            if self.shutdown:
-                break
-
-            cnt = 0
-            while self.active:
-                sleep(0.04)
-                cnt += 1
-                if cnt % 50 == 0: self.refresh()
-                try:
-                    self.redraw()
-                except Exception as e:
-                    traceback.print_exc()
-                    print(e)
-                    return
-            e.clear()
 
     def text_extents(self, gc, text):
         if not hasattr(gc, "_extent_cache"): setattr(gc, "_extent_cache", {})
@@ -148,36 +122,13 @@ class Drawing:
 
     def refresh(self):
         # TODO: do this with xlib
-        #call(["xrefresh"])
+        call(["xrefresh"])
         pass
 
     def redraw(self):
         for a in list(self.actions.keys()):
             a.draw(self)
         self.d.flush()
-
-    def enable(self):
-        if not self.active:
-            self.active = True
-            self.event.set()
-
-    def disable(self):
-        self.active = False
-        self.refresh()
-
-    def stop(self):
-        self.shutdown = True
-        self.activate = False
-        self.event.set()
-
-    def draw(self, action):
-        self.actions[action] = True
-
-    def undraw(self, action=None):
-        if not action:
-            self.actions.clear()
-        else:
-            del self.actions[action]
 
 
 if __name__ == '__main__':
