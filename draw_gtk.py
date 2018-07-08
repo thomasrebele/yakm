@@ -57,21 +57,22 @@ class Zone(base.Zone):
 
 class Window(Gtk.Window):
 
-    def __init__(self, actions):
+    def __init__(self, drawing):
         super(Window, self).__init__()
 
-        self.actions = actions
+        self.drawing = drawing
+        self.click_box_width = 1
 
         self.set_app_paintable(True)
         self.set_type_hint(Gdk.WindowTypeHint.DOCK)
         self.set_keep_below(True)
 
-        screen = self.get_screen()
-        self.root = screen.get_root_window()
+        self.screen = self.get_screen()
+        self.root = self.screen.get_root_window()
 
-#        visual = screen.get_rgba_visual()
-#        if visual != None and screen.is_composited():
-#            self.set_visual(visual)
+        visual = self.screen.get_rgba_visual()
+        if visual != None and self.screen.is_composited():
+            self.set_visual(visual)
 
         self.set_events(Gdk.EventMask.ALL_EVENTS_MASK)
         self.connect("draw", self.on_draw)
@@ -88,13 +89,13 @@ class Window(Gtk.Window):
 
         self.add(lbl)
 
-        self.resize(screen.get_width(), screen.get_height())
+        self.resize(self.screen.get_width(), self.screen.get_height())
         self.move(0,0)
-        self.show_all()
-
 
         self.region = self.get_mask()
         self.shape_combine_region(self.region)
+
+        self.show_all()
 
     def get_mask(self):
         w, h = self.get_size()
@@ -103,26 +104,31 @@ class Window(Gtk.Window):
         region.union(cairo.RectangleInt(x=10, y=10, width=10, height=10))
         region.union(cairo.RectangleInt(x=-20, y=20, width=50, height=10))
 
-        print(len(self.actions))
-        for i in self.actions:
+        print(len(self.drawing.actions))
+        for i in self.drawing.actions:
             r = i.region()
+            print("action: " + str(i) + " region " + str(r))
             if r:
                 region.union(r)
             else:
                 print("warning: no region for " + str(i))
 
-        p = self.root.get_pointer()
-        region.subtract(cairo.RectangleInt(x=int(p.x), y=int(p.y), width=10, height=10))
+        #p = self.root.get_pointer()
+        #region.subtract(cairo.RectangleInt(x=int(p.x), y=int(p.y), width=10, height=10))
 
+        # print("x:" + str(self.get_position()) )
         return region
 
     def redraw(self):
+        print("calling window.redraw")
         self.region = self.get_mask()
         self.shape_combine_region(self.region)
+        if not self.props.visible:
+            self.show()
 
-    def hide(self):
-        self.region = cairo.Region(cairo.RectangleInt(width=0, height=0))
-        self.shape_combine_region(self.region)
+    def undraw(self):
+        print("calling window.undraw")
+        self.hide()
 
     def on_draw(self, widget, cr):
         cr.set_source_rgba(1.0, 0.0, 0.0, .75)
@@ -132,7 +138,12 @@ class Window(Gtk.Window):
         if hasattr(cr, "x"):
             # remove point
             region = self.region.copy()
-            region.subtract(cairo.RectangleInt(x=int(cr.x), y=int(cr.y), width=10, height=10))
+            d = self.click_box_width
+            region.subtract(cairo.RectangleInt(
+                x=int(cr.x-d),
+                y=int(cr.y-d),
+                width=1+2*d,
+                height=1+2*d))
             self.shape_combine_region(region)
 
 
@@ -143,7 +154,7 @@ class Drawing(base.Drawing):
         gtk_thread = threading.Thread(name='update',
                          target=self._run_gtk,
                          args=(self.event,))
-        self.window = Window(self.actions)
+        self.window = Window(self)
 
         # avoid error on ctrl+c
         import signal
@@ -158,8 +169,9 @@ class Drawing(base.Drawing):
         pass
 
     def undraw(self):
-        self.window.hide()
+        #self.window.undraw()
         self.actions.clear()
+        self.window.redraw()
 
     def enable(self):
         self.window.redraw()
@@ -169,9 +181,19 @@ class Drawing(base.Drawing):
         super().disable()
         self.window.hide()
 
+import signal
+
+def sigabrt_handler():
+    print("SIGABRT received")
+    pass
+
+signal.signal(signal.SIGABRT, sigabrt_handler)
+print("registered SIGABRT handler")
+
 if __name__ == '__main__':
     draw = Drawing()
     print(draw.mouse_coords())
+
 
     draw.enable()
     draw.draw(Rectangle(x=500))
