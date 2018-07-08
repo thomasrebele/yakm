@@ -539,8 +539,9 @@ class GridMode(Mode):
 
     def apply(self, state):
         # draw grid
-        state.nav.undraw()
+        state.nav.vis.clear()
         enabled = state.nav.vis.is_enabled()
+        print("apply?  " + str(enabled))
 
         # do we need this?
         if not enabled:
@@ -623,6 +624,8 @@ class GridMode(Mode):
                         label.text = str(configuration["dart_nav_chars"][grid_row][grid_col])
                         state.nav.draw(label)
 
+        print("\n\nwtf???")
+        state.nav.vis.refresh()
         state.nav.vis.enable()
 
 class MarkMode(Mode):

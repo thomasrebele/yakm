@@ -6,9 +6,13 @@ import threading
 from time import sleep
 from subprocess import call
 
-from gi.repository import Gtk, Gdk, Pango, GdkPixbuf
+from gi.repository import Gtk, Gdk, Pango, GdkPixbuf, GObject, GLib
 import cairo
 
+# necessary? see https://stackoverflow.com/questions/21150914/python-gtk-3-safe-threading
+# GLib.threads_init()
+GObject.threads_init()
+# Gdk.threads_init()
 
 import draw as base
 
@@ -49,7 +53,17 @@ class Label(base.Label):
 class Zone(base.Zone):
     def region(self):
         # TODO
-        return cairo.RectangleInt(x=int(self.left()), y=int(self.top()), width=int(self.w), height=int(self.h))
+        x1 = int(self.left())
+        x2 = int(self.right())
+        y1 = int(self.top())
+        y2 = int(self.bottom())
+        w = int(self.w)
+        h = int(self.h)
+        r = cairo.Region(cairo.RectangleInt(x=x1, y=y1, width=1, height=h))
+        r.union(cairo.RectangleInt(x=x1, y=y1, width=w, height=1))
+        r.union(cairo.RectangleInt(x=x2, y=y1, width=1, height=h))
+        r.union(cairo.RectangleInt(x=x1, y=y2, width=w, height=1))
+        return r
 
 
     def draw(self, drawing):
@@ -97,6 +111,7 @@ class Window(Gtk.Window):
 
         self.show_all()
 
+
     def get_mask(self):
         w, h = self.get_size()
         region = cairo.Region(cairo.RectangleInt(width=0, height=0))
@@ -104,7 +119,7 @@ class Window(Gtk.Window):
         region.union(cairo.RectangleInt(x=10, y=10, width=10, height=10))
         region.union(cairo.RectangleInt(x=-20, y=20, width=50, height=10))
 
-        print(len(self.drawing.actions))
+        print("number of actions: " + str(len(self.drawing.actions)))
         for i in self.drawing.actions:
             r = i.region()
             print("action: " + str(i) + " region " + str(r))
@@ -116,7 +131,21 @@ class Window(Gtk.Window):
         #p = self.root.get_pointer()
         #region.subtract(cairo.RectangleInt(x=int(p.x), y=int(p.y), width=10, height=10))
 
-        # print("x:" + str(self.get_position()) )
+        dct = {
+                "focus_visible": None,
+                "mnemonics_visible": None,
+                "screen": None,
+                "style": None,
+                "window": None,
+                "visible": None
+            }
+        for i in dir(self.props):
+            if not i in dct: continue
+            try:
+                dct[i] = getattr(self.props, i)
+            except:
+                pass
+        print(dct)
         return region
 
     def redraw(self):
@@ -125,6 +154,8 @@ class Window(Gtk.Window):
         self.shape_combine_region(self.region)
         if not self.props.visible:
             self.show()
+
+        print(self.get_position())
 
     def undraw(self):
         print("calling window.undraw")
@@ -144,6 +175,7 @@ class Window(Gtk.Window):
                 y=int(cr.y-d),
                 width=1+2*d,
                 height=1+2*d))
+            #GLib.idle_add(self.shape_combine_region, region)
             self.shape_combine_region(region)
 
 
@@ -153,8 +185,12 @@ class Drawing(base.Drawing):
         super().__init__()
         gtk_thread = threading.Thread(name='update',
                          target=self._run_gtk,
-                         args=(self.event,))
+                         args=(None,))
+
+
+
         self.window = Window(self)
+        self.enabled = False
 
         # avoid error on ctrl+c
         import signal
@@ -166,20 +202,25 @@ class Drawing(base.Drawing):
         Gtk.main()
 
     def refresh(self):
-        pass
+        print("\ncalling refresh\n")
+        GLib.idle_add(self.window.redraw)
 
     def undraw(self):
-        #self.window.undraw()
         self.actions.clear()
-        self.window.redraw()
+        GLib.idle_add(self.window.undraw)
 
     def enable(self):
-        self.window.redraw()
+        GLib.idle_add(self.window.redraw)
         super().enable()
+        self.enabled = True
+
+    def is_enabled(self):
+        return self.enabled
 
     def disable(self):
         super().disable()
-        self.window.hide()
+        #self.window.hide()
+        self.enabled = False
 
 import signal
 

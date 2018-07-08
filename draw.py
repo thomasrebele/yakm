@@ -117,6 +117,8 @@ class RepeatingThread:
         self.event.set()
 
 
+
+
 class Drawing:
     def __init__(self):
         self.actions = {}
@@ -134,10 +136,14 @@ class Drawing:
         self.refresh()
 
     def is_enabled(self):
+        print("Warning: is_enabled not implemented")
         pass
 
     def stop(self):
         pass
+
+    def clear(self):
+        self.actions.clear()
 
     def draw(self, action):
         self.actions[action] = True
