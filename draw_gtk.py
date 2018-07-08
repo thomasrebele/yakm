@@ -6,234 +6,168 @@ import threading
 from time import sleep
 from subprocess import call
 
-from Xlib import X, display, Xutil
-import Xlib as xlib
+from gi.repository import Gtk, Gdk, Pango, GdkPixbuf
+import cairo
 
-class Action:
-    def draw(self):
+
+import draw as base
+
+Action = base.Action
+
+class Rectangle(base.Rectangle):
+    def region(self):
+        return cairo.RectangleInt(x=int(self.x), y=int(self.y), width=int(self.w), height=int(self.h))
+
+    def draw(self, drawing):
         pass
 
-class Point:
-    def __init__(self, x=0, y=0):
-        self.x = x
-        self.y = y
+class Line(base.Line):
+    def region(self):
+        w = int(abs(self.x2-self.x1))
+        h = int(abs(self.y2-self.y1))
+        w = max(w, 1)
+        h = max(h, 1)
+        return cairo.RectangleInt(x=int(self.x1), y=int(self.y1), width=w, height=h)
 
-    def __str__(self):
-        return "x:" + str(self.x) + " y:" + str(self.y)
-
-class Rectangle(Action):
-    def __init__(self, x=0, y=0, w=100, h=100):
-        self.x = x
-        self.y = y
-        self.w = w
-        self.h = h
 
     def draw(self, drawing):
-        drawing.root.rectangle(drawing.gc,
-            int(self.x),
-            int(self.y),
-            int(self.w),
-            int(self.h)
-        )
+        pass
 
-class Line(Action):
-    def __init__(self):
-        self.x1 = 0
-        self.y1 = 0
-        self.x2 = 100
-        self.y2 = 100
-
-    def draw(self, drawing):
-        drawing.root.line(drawing.gc,
-            # TODO: intersection with border
-            max(0,int(self.x1)),
-            max(0,int(self.y1)),
-            max(0,int(self.x2)),
-            max(0,int(self.y2))
-        )
-
-    def __str__(self):
-        return "line: " + str(self.x1) + "," + str(self.y1) + " - " + str(self.x2) + "," + str(self.y2)
-
-class Label(Action):
-    def __init__(self):
-        self.x = 0
-        self.y = 0
-        self.anchor_x = 0.5
-        self.anchor_y = 0.5
-        self.text = "<label>"
-        self.padding = 2
+class Label(base.Label):
+    def region(self):
+        # TODO
+        return cairo.RectangleInt(x=int(self.x), y=int(self.y), width=10, height=10)
 
     def size(self, drawing):
-        info = drawing.text_extents(drawing.gc, self.text)
-        self.width = info["overall_width"] + 2 * self.padding
-        self.height = info["font_ascent"] + info["font_descent"] + 2 * self.padding
-        self.shift_y = info["font_ascent"]
-        return (self.width, self.height)
+        return (0,0)
 
     def draw(self, drawing):
-        self.size(drawing)
-        # coordinates are bottom left corner of text
-        left = self.x - self.anchor_x * self.width
-        top = self.y - self.anchor_y * self.height
-
-        drawing.root.fill_rectangle(drawing.fill_gc,
-            int(left),
-            int(top),
-            int(self.width),
-            int(self.height)
-        )
-
-        drawing.root.draw_text(drawing.gc,
-                int(left + self.padding),
-                int(top + self.shift_y + self.padding),
-                self.text.encode()
-        )
-
         pass
 
 
 
-class Zone(Action):
-    def __init__(self):
-        self.x = 0
-        self.y = 0
-        self.w = 100
-        self.h = 100
-
-    def __str__(self):
-        return "zone: " + str(self.x) + "," + str(self.y) + " size " + str(self.w) + "," + str(self.h)
+class Zone(base.Zone):
+    def region(self):
+        # TODO
+        return cairo.RectangleInt(x=int(self.left()), y=int(self.top()), width=int(self.w), height=int(self.h))
 
 
     def draw(self, drawing):
-        drawing.root.rectangle(drawing.gc,
-            int(self.x-self.w/2),
-            int(self.y-self.h/2),
-            int(self.w),
-            int(self.h)
-        )
-
-    def left(self):
-        return self.x-self.w/2
-
-    def right(self):
-        return self.x+self.w/2
-
-    def top(self):
-        return self.y-self.h/2
-
-    def bottom(self):
-        return self.y+self.h/2
-
-
-class Drawing:
-    def __init__(self):
-        self.d = display.Display()
-        font = self.d.open_font("-adobe-helvetica-*-r-normal-*-25-*-*-*-*-*-*-*")
-        if font == None:
-            font = self.d.open_font("-*-*-bold-r-normal--25-*-*-75-*-*-*-*")
-
-        self.screen = self.d.screen()
-        self.root = self.screen.root
-
-        self.window = self.root.create_window(500, 0, 200, 200, 0, self.screen.root_depth, X.InputOutput, X.CopyFromParent)
-
-        fg = 0xff0000
-        bg = 0x00ff00
-
-        self.gc = self.root.create_gc(
-            line_width = 2,
-            foreground = fg,
-            background = bg,
-            subwindow_mode = X.IncludeInferiors,
-            font = font,
-        )
-
-        self.fill_gc = self.root.create_gc(
-            line_width = 4,
-            foreground = 0xffffff,
-            background = 0xffffff,
-            subwindow_mode = X.IncludeInferiors,
-            font = font,
-        )
-
-        self.actions = {}
-        self.event = threading.Event()
-        self.thread = threading.Thread(name='update',
-                         target=self._run,
-                         args=(self.event,))
-        self.thread.start()
-        self.active = False
-        self.shutdown = False
-
-    def _run(self, e):
-        while True:
-            event_is_set = e.wait()
-            print("thread: " + str(self.active))
-            if self.shutdown:
-                break
-
-            cnt = 0
-            while self.active:
-                sleep(0.04)
-                cnt += 1
-                if cnt % 50 == 0: self.refresh()
-                try:
-                    self.redraw()
-                except Exception as e:
-                    traceback.print_exc()
-                    print(e)
-                    return
-            e.clear()
-
-    def text_extents(self, gc, text):
-        if not hasattr(gc, "_extent_cache"): setattr(gc, "_extent_cache", {})
-        cache = getattr(gc, "_extent_cache")
-
-        if text in cache: return cache[text]
-        info = self.gc.query_text_extents(text.encode())._data
-        cache[text] = info
-        return info
-
-    def mouse_coords(self):
-        data = self.root.query_pointer()._data
-
-        return Point(x=data["root_x"], y=data["root_y"])
-
-
-    def refresh(self):
-        # TODO: do this with xlib
-        #call(["xrefresh"])
         pass
+
+class Window(Gtk.Window):
+
+    def __init__(self, actions):
+        super(Window, self).__init__()
+
+        self.actions = actions
+
+        self.set_app_paintable(True)
+        self.set_type_hint(Gdk.WindowTypeHint.DOCK)
+        self.set_keep_below(True)
+
+        screen = self.get_screen()
+        self.root = screen.get_root_window()
+
+#        visual = screen.get_rgba_visual()
+#        if visual != None and screen.is_composited():
+#            self.set_visual(visual)
+
+        self.set_events(Gdk.EventMask.ALL_EVENTS_MASK)
+        self.connect("draw", self.on_draw)
+        self.connect("motion_notify_event", self.on_mouse_move)
+        self.connect("event", self.on_mouse_move)
+
+        lbl = Gtk.Label()
+        text = "xyz"
+        lbl.set_text(text)
+
+        fd = Pango.FontDescription("Serif 20")
+        lbl.modify_font(fd)
+        lbl.modify_fg(Gtk.StateFlags.NORMAL,Gdk.color_parse("white"))
+
+        self.add(lbl)
+
+        self.resize(screen.get_width(), screen.get_height())
+        self.move(0,0)
+        self.show_all()
+
+
+        self.region = self.get_mask()
+        self.shape_combine_region(self.region)
+
+    def get_mask(self):
+        w, h = self.get_size()
+        region = cairo.Region(cairo.RectangleInt(width=0, height=0))
+        region.union(cairo.RectangleInt(x=0, y=0, width=10, height=10))
+        region.union(cairo.RectangleInt(x=10, y=10, width=10, height=10))
+        region.union(cairo.RectangleInt(x=-20, y=20, width=50, height=10))
+
+        print(len(self.actions))
+        for i in self.actions:
+            r = i.region()
+            if r:
+                region.union(r)
+            else:
+                print("warning: no region for " + str(i))
+
+        p = self.root.get_pointer()
+        region.subtract(cairo.RectangleInt(x=int(p.x), y=int(p.y), width=10, height=10))
+
+        return region
 
     def redraw(self):
-        for a in list(self.actions.keys()):
-            a.draw(self)
-        self.d.flush()
+        self.region = self.get_mask()
+        self.shape_combine_region(self.region)
+
+    def hide(self):
+        self.region = cairo.Region(cairo.RectangleInt(width=0, height=0))
+        self.shape_combine_region(self.region)
+
+    def on_draw(self, widget, cr):
+        cr.set_source_rgba(1.0, 0.0, 0.0, .75)
+        cr.paint()
+
+    def on_mouse_move(self, widget, cr):
+        if hasattr(cr, "x"):
+            # remove point
+            region = self.region.copy()
+            region.subtract(cairo.RectangleInt(x=int(cr.x), y=int(cr.y), width=10, height=10))
+            self.shape_combine_region(region)
+
+
+
+class Drawing(base.Drawing):
+    def __init__(self):
+        super().__init__()
+        gtk_thread = threading.Thread(name='update',
+                         target=self._run_gtk,
+                         args=(self.event,))
+        self.window = Window(self.actions)
+
+        # avoid error on ctrl+c
+        import signal
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+        gtk_thread.start()
+
+    def _run_gtk(self, e):
+        Gtk.main()
+
+    def refresh(self):
+        pass
+
+    def undraw(self):
+        self.window.hide()
+        self.actions.clear()
 
     def enable(self):
-        if not self.active:
-            self.active = True
-            self.event.set()
+        self.window.redraw()
+        super().enable()
 
     def disable(self):
-        self.active = False
-        self.refresh()
-
-    def stop(self):
-        self.shutdown = True
-        self.activate = False
-        self.event.set()
-
-    def draw(self, action):
-        self.actions[action] = True
-
-    def undraw(self, action=None):
-        if not action:
-            self.actions.clear()
-        else:
-            del self.actions[action]
-
+        super().disable()
+        self.window.hide()
 
 if __name__ == '__main__':
     draw = Drawing()

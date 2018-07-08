@@ -7,7 +7,7 @@ from time import sleep
 import queue
 
 import Xlib
-from Xlib import X, XK
+from Xlib import X, display, XK
 from Xlib.ext.xtest import fake_input
 
 key_mods = {

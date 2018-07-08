@@ -19,7 +19,7 @@ import pathlib
 import os.path
 from collections import defaultdict
 
-import draw_xlib as draw
+import draw_gtk as draw
 import input_devices
 
 

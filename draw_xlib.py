@@ -59,8 +59,6 @@ class Label(base.Label):
                 self.text.encode()
         )
 
-        pass
-
 
 
 class Zone(base.Zone):
@@ -116,7 +114,6 @@ class Drawing(base.Drawing):
 
     def mouse_coords(self):
         data = self.window.query_pointer()._data
-
         return Point(x=data["root_x"], y=data["root_y"])
 
 
