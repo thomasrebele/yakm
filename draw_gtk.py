@@ -47,33 +47,30 @@ class Label(base.Label):
         self.lbl.set_text(self.text)
         self.lbl.modify_font(self.fd)
         self.lbl.modify_fg(Gtk.StateFlags.NORMAL,Gdk.color_parse("white"))
-        self.lbl.modify_bg(Gtk.StateFlags.NORMAL,Gdk.color_parse("blue"))
 
-    def calc_size(self):
+    def size(self, drawing=None):
+        # workaround: calling get_layout too often causes a segmentation fault
+        if hasattr(self, "width"):
+            return self.width, self.height
+
         # https://stackoverflow.com/a/23187879/1562506
-        layout = self.lbl.get_layout()
+        lbl = Gtk.Label()
+        layout = lbl.get_layout()
         layout.set_markup(self.text)
         layout.set_font_description(self.fd)
-        w, h = layout.get_pixel_size()
-        return w,h
+        self.width, self.height = layout.get_pixel_size()
+        return self.width, self.height
 
     def region(self):
-        w,h = self.calc_size()
+        w,h = self.size()
         return cairo.RectangleInt(x=int(self.x-w/2), y=int(self.y-h/2), width=w, height=h)
-
-    def size(self, drawing):
-        return (0,0)
 
     def draw(self, drawing):
         self.init()
-
-        w,h = self.calc_size()
-        #print("draw: " + str([rect.x, rect.y, rect.width, rect.height]))
+        w,h = self.size()
         w = max(w, 10)
         h = max(h, 10)
         drawing.fix.put(self.lbl, self.x-w/2, self.y-h/2)
-
-        pass
 
 
 
@@ -133,13 +130,12 @@ class Window(Gtk.Window):
 
 
         self.show_all()
-        print("here")
 
     def get_mask(self):
         w, h = self.get_size()
         region = cairo.Region(cairo.RectangleInt(width=0, height=0))
 
-        for i in self.drawing.actions:
+        for i in self.drawing.actions.keys():
             r = i.region()
             if r:
                 region.union(r)
@@ -156,28 +152,10 @@ class Window(Gtk.Window):
         for c in self.drawing.fix.get_children():
             self.drawing.fix.remove(c)
 
-        lbl = Gtk.Label()
-        text = "xyz aba atua rartuae"
-        lbl.set_text(text)
-
-        fd = Pango.FontDescription("Serif 50")
-        lbl.modify_font(fd)
-        lbl.modify_fg(Gtk.StateFlags.NORMAL,Gdk.color_parse("white"))
-        lbl.modify_bg(Gtk.StateFlags.NORMAL,Gdk.color_parse("blue"))
-        self.drawing.fix.put(lbl, 100, 100)
-
         for i in self.drawing.actions.keys():
             i.draw(self.drawing)
-
-
-        self.show_all()
-        for i in self.drawing.actions.keys():
-            i.draw(self.drawing)
-
-        self.show_all()
 
         self.region = self.get_mask()
-        self.region.union(cairo.RectangleInt(x=100, y=100, width=100, height=50))
         self.shape_combine_region(self.region)
         self.show_all()
 
