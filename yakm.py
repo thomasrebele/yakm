@@ -19,8 +19,8 @@ import pathlib
 import os.path
 from collections import defaultdict
 
-#import draw_gtk as draw
-import draw_xlib as draw
+import draw_gtk as draw
+#import draw_xlib as draw
 import input_devices
 
 
@@ -541,7 +541,6 @@ class GridMode(Mode):
         # draw grid
         state.nav.vis.clear()
         enabled = state.nav.vis.is_enabled()
-        print("apply?  " + str(enabled))
 
         # do we need this?
         if not enabled:
@@ -624,7 +623,6 @@ class GridMode(Mode):
                         label.text = str(configuration["dart_nav_chars"][grid_row][grid_col])
                         state.nav.draw(label)
 
-        print("\n\nwtf???")
         state.nav.vis.refresh()
         state.nav.vis.enable()
 

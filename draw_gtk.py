@@ -38,14 +38,29 @@ class Line(base.Line):
         pass
 
 class Label(base.Label):
+    def __init__(self):
+        super().__init__()
+        self.lbl = Gtk.Label()
+        fd = Pango.FontDescription("Serif 20")
+        self.lbl.modify_font(fd)
+        self.lbl.modify_fg(Gtk.StateFlags.NORMAL,Gdk.color_parse("white"))
+        self.lbl.modify_bg(Gtk.StateFlags.NORMAL,Gdk.color_parse("blue"))
+
     def region(self):
-        # TODO
-        return cairo.RectangleInt(x=int(self.x), y=int(self.y), width=10, height=10)
+        rect = self.lbl.get_allocation()
+        print([rect.x, rect.y, rect.width, rect.height])
+        return cairo.RectangleInt(x=rect.x, y=rect.y, width=rect.width, height=rect.height)
 
     def size(self, drawing):
         return (0,0)
 
     def draw(self, drawing):
+        self.lbl.set_text(self.text)
+        rect = self.lbl.get_allocation()
+        w = max(rect.width, 10)
+        h = max(rect.height, 10)
+        drawing.fix.put(self.lbl, self.x-w/2, self.y-h/2)
+
         pass
 
 
@@ -93,15 +108,10 @@ class Window(Gtk.Window):
         self.connect("motion_notify_event", self.on_mouse_move)
         self.connect("event", self.on_mouse_move)
 
-        lbl = Gtk.Label()
-        text = "xyz"
-        lbl.set_text(text)
+        self.drawing.fix = Gtk.Fixed()
+        self.add(self.drawing.fix)
 
-        fd = Pango.FontDescription("Serif 20")
-        lbl.modify_font(fd)
-        lbl.modify_fg(Gtk.StateFlags.NORMAL,Gdk.color_parse("white"))
 
-        self.add(lbl)
 
         self.resize(self.screen.get_width(), self.screen.get_height())
         self.move(0,0)
@@ -109,59 +119,57 @@ class Window(Gtk.Window):
         self.region = self.get_mask()
         self.shape_combine_region(self.region)
 
-        self.show_all()
 
+        self.show_all()
+        print("here")
 
     def get_mask(self):
         w, h = self.get_size()
         region = cairo.Region(cairo.RectangleInt(width=0, height=0))
-        region.union(cairo.RectangleInt(x=0, y=0, width=10, height=10))
-        region.union(cairo.RectangleInt(x=10, y=10, width=10, height=10))
-        region.union(cairo.RectangleInt(x=-20, y=20, width=50, height=10))
 
-        print("number of actions: " + str(len(self.drawing.actions)))
         for i in self.drawing.actions:
             r = i.region()
-            print("action: " + str(i) + " region " + str(r))
             if r:
                 region.union(r)
             else:
                 print("warning: no region for " + str(i))
 
-        #p = self.root.get_pointer()
-        #region.subtract(cairo.RectangleInt(x=int(p.x), y=int(p.y), width=10, height=10))
+        p = self.root.get_pointer()
+        region.subtract(cairo.RectangleInt(x=int(p.x), y=int(p.y), width=10, height=10))
 
-        dct = {
-                "focus_visible": None,
-                "mnemonics_visible": None,
-                "screen": None,
-                "style": None,
-                "window": None,
-                "visible": None
-            }
-        for i in dir(self.props):
-            if not i in dct: continue
-            try:
-                dct[i] = getattr(self.props, i)
-            except:
-                pass
-        print(dct)
         return region
 
     def redraw(self):
-        print("calling window.redraw")
-        self.region = self.get_mask()
-        self.shape_combine_region(self.region)
-        if not self.props.visible:
-            self.show()
 
-        print(self.get_position())
+        for c in self.drawing.fix.get_children():
+            self.drawing.fix.remove(c)
+
+        lbl = Gtk.Label()
+        text = "xyz aba atua rartuae"
+        lbl.set_text(text)
+
+        fd = Pango.FontDescription("Serif 50")
+        lbl.modify_font(fd)
+        lbl.modify_fg(Gtk.StateFlags.NORMAL,Gdk.color_parse("white"))
+        lbl.modify_bg(Gtk.StateFlags.NORMAL,Gdk.color_parse("blue"))
+        self.drawing.fix.put(lbl, 100, 100)
+
+        for i in self.drawing.actions.keys():
+            i.draw(self.drawing)
+
+        self.show_all()
+
+        self.region = self.get_mask()
+        self.region.union(cairo.RectangleInt(x=100, y=100, width=100, height=50))
+        self.shape_combine_region(self.region)
+        self.show_all()
+
 
     def undraw(self):
-        print("calling window.undraw")
         self.hide()
 
     def on_draw(self, widget, cr):
+
         cr.set_source_rgba(1.0, 0.0, 0.0, .75)
         cr.paint()
 
@@ -202,7 +210,6 @@ class Drawing(base.Drawing):
         Gtk.main()
 
     def refresh(self):
-        print("\ncalling refresh\n")
         GLib.idle_add(self.window.redraw)
 
     def undraw(self):
@@ -233,7 +240,6 @@ print("registered SIGABRT handler")
 
 if __name__ == '__main__':
     draw = Drawing()
-    print(draw.mouse_coords())
 
 
     draw.enable()
