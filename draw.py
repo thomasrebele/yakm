@@ -72,9 +72,13 @@ class Zone(Action):
         return self.y+self.h/2
 
 
-class Drawing:
-    def __init__(self):
-        self.actions = {}
+class RepeatingThread:
+    """Execute several functions periodically. Every function can have a different cycle"""
+
+    def __init__(self, fn_to_freq = {}, rate=1/25):
+        self.rate = rate
+        self.fn_to_freq = fn_to_freq
+
         self.event = threading.Event()
         self.thread = threading.Thread(name='update',
                          target=self._run,
@@ -92,22 +96,12 @@ class Drawing:
 
             cnt = 0
             while self.active:
-                sleep(0.04)
+                sleep(self.rate)
                 cnt += 1
-                if cnt % 50 == 0: self.refresh()
-                try:
-                    self.redraw()
-                except Exception as e:
-                    traceback.print_exc()
-                    print(e)
-                    return
+                for fn, freq in self.fn_to_freq.items():
+                    if cnt % freq == 0: fn()
+
             e.clear()
-
-    def refresh(self):
-        pass
-
-    def redraw(self):
-        pass
 
     def enable(self):
         if not self.active:
@@ -116,12 +110,34 @@ class Drawing:
 
     def disable(self):
         self.active = False
-        self.refresh()
 
     def stop(self):
         self.shutdown = True
         self.activate = False
         self.event.set()
+
+
+class Drawing:
+    def __init__(self):
+        self.actions = {}
+
+    def refresh(self):
+        pass
+
+    def redraw(self):
+        pass
+
+    def enable(self):
+        pass
+
+    def disable(self):
+        self.refresh()
+
+    def is_enabled(self):
+        pass
+
+    def stop(self):
+        pass
 
     def draw(self, action):
         self.actions[action] = True

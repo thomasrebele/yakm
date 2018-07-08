@@ -19,7 +19,8 @@ import pathlib
 import os.path
 from collections import defaultdict
 
-import draw_gtk as draw
+#import draw_gtk as draw
+import draw_xlib as draw
 import input_devices
 
 
@@ -539,7 +540,7 @@ class GridMode(Mode):
     def apply(self, state):
         # draw grid
         state.nav.undraw()
-        enabled = state.nav.vis.active
+        enabled = state.nav.vis.is_enabled()
 
         # do we need this?
         if not enabled:
@@ -689,7 +690,7 @@ class MarkMode(Mode):
     def apply(self, state):
         # draw grid
         state.nav.undraw()
-        enabled = state.nav.vis.active
+        enabled = state.nav.vis.is_enabled()
         state.nav.vis.disable()
 
         bindings = self.bindings()
@@ -784,7 +785,7 @@ class KeyNavigator(Navigator):
     def input_dialog(self, msg=""):
         """Ask the user to type in text"""
 
-        enabled = self.vis.active
+        enabled = self.vis.is_enabled()
         self.vis.disable()
         self.vis.refresh()
         grabbing = self.input.grabbing

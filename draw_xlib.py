@@ -102,6 +102,20 @@ class Drawing(base.Drawing):
 
         super().__init__()
 
+        fn_to_freq = {}
+        fn_to_freq[lambda: self.refresh()] = 50
+
+        def fn():
+            try:
+                self.redraw()
+            except Exception as e:
+                traceback.print_exc()
+                print(e)
+                return
+        fn_to_freq[fn] = 1
+
+        self.thread = base.RepeatingThread(fn_to_freq)
+
 
     def text_extents(self, gc, text):
         if not hasattr(gc, "_extent_cache"): setattr(gc, "_extent_cache", {})
@@ -116,6 +130,18 @@ class Drawing(base.Drawing):
         data = self.window.query_pointer()._data
         return Point(x=data["root_x"], y=data["root_y"])
 
+    def enable(self):
+        self.thread.enable()
+
+    def disable(self):
+        self.thread.disable()
+        self.refresh()
+
+    def is_enabled(self):
+        return self.thread.active
+
+    def stop(self):
+        self.thread.stop()
 
     def refresh(self):
         # TODO: do this with xlib
