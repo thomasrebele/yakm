@@ -72,6 +72,19 @@ In that case, you have to specify it in the configuration file:
        "c": click(1),
     }
 
+Drawing
+---
+
+### Xlib
+The Xlib drawing module directly draws on the screen.
+Currently it uses the external command `xrefresh` to remove previously drawn lines.
+This causes a noticable flickering.
+
+### Gtk
+The Gtk drawing module uses a GTK window. 
+The shape of the window is modified, so that it only covers those pixels that are used for drawing the lines or labels.
+This mimics the behavior of keynav (although keynav uses Xlib for this purpose). 
+This module still contains some bugs that might cause fatal crashes.
 
 Caveats
 ---
@@ -80,7 +93,6 @@ Caveats
 * Left click does not work in some programs (e.g., XFCE panel)
 * Drag and drop does not work in some programs (e.g., Zotero)
 * Key bindings are not updated when user executes a setxkbmap command
-* YAKM does not recieve 'xdotool key Left' in grid mode
+* YAKM does not react to 'xdotool key Left' in grid mode
 * Some commands of keynav are not yet implemented (e.g., grid-nav off/toggle, record, sh, cut-\*, ...)
-* The drawing module could be improved. Currently it uses the external command `xrefresh` to remove previously drawn lines. This causes a noticable flickering.
 
