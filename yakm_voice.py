@@ -8,7 +8,7 @@ from time import sleep
 from subprocess import call
 
 from yakm import *
-import draw
+import draw_gtk as draw
 import input_devices
 
 ### commands
