@@ -90,6 +90,14 @@ class VoiceMode(Mode):
             else:
                 print("I don't understand '" + str(cmd) + "'")
 
+    def apply(self, state):
+        """Draw visualization of this mode on the screen"""
+
+        label = draw.Label()
+        label.x = 1000
+        label.y = 500
+        label.text = "test of the the solicitation more word whateversw"
+        state.nav.draw(label)
 
 
 class DictateMode(Mode):
@@ -140,6 +148,13 @@ class VoiceNavigator(Navigator):
         # voice_mode = VoiceMode(self, configuration["bindings"])
         # self.state.enter_mode(voice_mode, grab_keyboard=False)
 
+        label = draw.Label()
+        label.x = 1000
+        label.y = 500
+        label.text = ""
+        self.vis.draw(label)
+
+
         while True:
             try:
                 line = f.readline()
@@ -152,6 +167,9 @@ class VoiceNavigator(Navigator):
             line = line[:-1]
             print(">" + str(line))
 
+            label.text = line
+            self.vis.draw(label)
+            self.vis.refresh()
 
             # execute command
             if self.state.mode:
