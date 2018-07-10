@@ -9,10 +9,7 @@ from subprocess import call
 from gi.repository import Gtk, Gdk, Pango, GdkPixbuf, GObject, GLib
 import cairo
 
-# necessary? see https://stackoverflow.com/questions/21150914/python-gtk-3-safe-threading
-# GLib.threads_init()
-GObject.threads_init()
-# Gdk.threads_init()
+
 
 import draw as base
 
@@ -39,18 +36,32 @@ class Line(base.Line):
 
 class Label(base.Label):
     def __init__(self):
-        super().__init__()
         self.lbl = Gtk.Label()
         self.fd = Pango.FontDescription("Serif 20")
+        self._text = "<label>"
+        super().__init__()
+
+    @property
+    def text(self):
+        return self._text
+
+    @text.setter
+    def text(self, value):
+        self._text = value
+        self.size(changed=True)
+
+    @text.getter
+    def text(self):
+        return self._text
 
     def init(self):
         self.lbl.set_text(self.text)
         self.lbl.modify_font(self.fd)
         self.lbl.modify_fg(Gtk.StateFlags.NORMAL,Gdk.color_parse("white"))
 
-    def size(self, drawing=None):
+    def size(self, drawing=None, changed=False):
         # workaround: calling get_layout too often causes a segmentation fault
-        if hasattr(self, "width"):
+        if hasattr(self, "width") and not changed:
             return self.width, self.height
 
         # https://stackoverflow.com/a/23187879/1562506
@@ -186,6 +197,9 @@ class Window(Gtk.Window):
 class Drawing(base.Drawing):
     def __init__(self):
         super().__init__()
+
+        # https://stackoverflow.com/questions/21150914/python-gtk-3-safe-threading
+        GObject.threads_init()
         gtk_thread = threading.Thread(name='update',
                          target=self._run_gtk,
                          args=(None,))
