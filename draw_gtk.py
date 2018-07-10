@@ -154,12 +154,10 @@ class Window(Gtk.Window):
                 print("warning: no region for " + str(i))
 
         p = self.root.get_pointer()
-        region.subtract(cairo.RectangleInt(x=int(p.x), y=int(p.y), width=10, height=10))
-
+        self.cut_pointer(region, p.x, p.y)
         return region
 
     def redraw(self):
-
         for c in self.drawing.fix.get_children():
             self.drawing.fix.remove(c)
 
@@ -175,21 +173,22 @@ class Window(Gtk.Window):
         self.hide()
 
     def on_draw(self, widget, cr):
-
         cr.set_source_rgba(1.0, 0.0, 0.0, .75)
         cr.paint()
+
+    def cut_pointer(self, region, x, y):
+        d = self.click_box_width
+        region.subtract(cairo.RectangleInt(
+            x=int(x-d),
+            y=int(y-d),
+            width=1+2*d,
+            height=1+2*d))
 
     def on_mouse_move(self, widget, cr):
         if hasattr(cr, "x"):
             # remove point
             region = self.region.copy()
-            d = self.click_box_width
-            region.subtract(cairo.RectangleInt(
-                x=int(cr.x-d),
-                y=int(cr.y-d),
-                width=1+2*d,
-                height=1+2*d))
-            #GLib.idle_add(self.shape_combine_region, region)
+            self.cut_pointer(region, cr.x, cr.y)
             self.shape_combine_region(region)
 
 
