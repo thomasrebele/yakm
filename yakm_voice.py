@@ -39,7 +39,18 @@ def dictate(state):
     state.enter_mode(mode, grab_keyboard=False)
     print("entered dictation mode")
 
-commands.update(["key", "dictate"])
+def say(word_count=1):
+    """Dictate n words"""
+
+    def _upd(state, n=word_count):
+        """Start the dictation mode"""
+        mode = DictateMode(state.nav, configuration["bindings"], word_count=n)
+        state.enter_mode(mode, grab_keyboard=False)
+        print("entered say mode")
+
+    return annotate(_upd, "say " + str(word_count))
+
+commands.update(["key", "dictate", "say"])
 print(commands)
 
 class VoiceMode(Mode):
@@ -72,31 +83,48 @@ class VoiceMode(Mode):
                     act(self.nav.state)
 
                 sleep(0.05)
-                self.process(state, keys[1:])
+
+                if state.mode:
+                    mode = state.mode[-1]
+                    mode.process(state, keys[1:])
             else:
                 print("I don't understand '" + str(cmd) + "'")
 
 
 
 class DictateMode(Mode):
-    def __init__(self, nav, conf):
+    def __init__(self, nav, conf, word_count=0):
         super().__init__(nav, conf)
         self.first = True
+        self.word_count = word_count
 
     def process(self, state, keys):
         if len(keys) == 0:
             return
 
-        if keys[0] in configuration["dictate_end"]:
+        if self.word_count > 0:
+            k = keys[:self.word_count]
+            print("here " + str(keys))
+            self.type(k)
+            self.word_count -= len(k)
+            if self.word_count == 0:
+                state.exit_mode()
+                print("quitting say mode")
+
+        elif keys[0] in configuration["dictate_end"]:
             state.exit_mode()
             print("quitting dictation mode")
         else:
-            text = str(" ".join(keys))
-            if not self.first:
-                text = " " + text
-            self.first = False
+            self.type(keys)
 
-            call(["xdotool", "type", text])
+    def type(self, keys):
+        print("typing " + str(keys))
+        text = str(" ".join(keys))
+        if not self.first:
+            text = " " + text
+        self.first = False
+
+        call(["xdotool", "type", text])
 
 
 class VoiceNavigator(Navigator):
