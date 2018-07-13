@@ -3,6 +3,9 @@
 
 import pathlib
 import os.path
+import tty
+import threading
+import sys
 from collections import defaultdict
 from time import sleep
 from subprocess import call
@@ -10,6 +13,42 @@ from subprocess import call
 from yakm import *
 import draw_gtk as draw
 import input_devices
+
+### helper methods
+
+# https://stackoverflow.com/a/21659588/1562506
+def _find_getch():
+    try:
+        import termios
+    except ImportError:
+        # Windows
+        import msvcrt
+        return msvcrt.getch
+
+    # POSIX system
+    if not stdin.isatty():
+        return lambda: stdin.read(1)
+
+    def _getch():
+        fd = stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+
+        try:
+            tty.setraw(stdin)
+            new_settings = termios.tcgetattr(fd)
+            # https://unix.stackexchange.com/a/265071/153926
+            new_settings[0] = new_settings[0] | termios.ICRNL
+            termios.tcsetattr(fd, termios.TCSANOW, new_settings)
+            ch = stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch
+
+    return _getch
+
+getch = _find_getch()
+
+
 
 ### commands
 
@@ -73,7 +112,10 @@ class VoiceMode(Mode):
                 modifiers[mod] = True
                 self.process(state, keys[1:])
             finally:
-                del modifiers[mod]
+                try:
+                    del modifiers[mod]
+                except:
+                    pass
 
         else:
             bindings = self.nav.state.get_current_bindings()
@@ -148,16 +190,16 @@ class VoiceNavigator(Navigator):
         # voice_mode = VoiceMode(self, configuration["bindings"])
         # self.state.enter_mode(voice_mode, grab_keyboard=False)
 
-        label = draw.Label()
-        label.x = 1000
-        label.y = 500
-        label.text = ""
-        self.vis.draw(label)
+        self.label = draw.Label()
+        self.label.x = 1000
+        self.label.y = 500
+        self.label.text = ""
+        self.vis.draw(self.label)
 
 
         while True:
             try:
-                line = f.readline()
+                line = self.readline()
             except KeyboardInterrupt:
                 break
 
@@ -167,8 +209,8 @@ class VoiceNavigator(Navigator):
             line = line[:-1]
             print(">" + str(line))
 
-            label.text = line
-            self.vis.draw(label)
+            self.label.text = line
+            self.vis.draw(self.label)
             self.vis.refresh()
 
             # execute command
@@ -187,8 +229,34 @@ class VoiceNavigator(Navigator):
 
 
         # TODO: exit on ctrl+c
+        print("exiting voice mode")
         self.vis.stop()
 
+
+    def readline(self):
+        prev = self.label.text
+        line = ""
+        print("reading")
+        while True:
+            ch = getch()
+            if len(ch) == 0:
+                return ""
+            char = ord(ch)
+            print(chr(char), end="", flush=True) # show input on terminal
+            # print("read " + chr(char), flush=True) # debug
+
+            self.label.text = prev + "\n" + line
+            self.vis.refresh()
+
+            if char in {3,4}:
+                raise KeyboardInterrupt
+            elif 32 <= char <= 126:
+                line += chr(char)
+            elif char == ord('\r'):
+                line = ""
+            elif char == ord('\n'):
+                print("read line: " + line)
+                return line + "\n"
 
 
 if __name__ == '__main__':
@@ -228,14 +296,21 @@ if __name__ == '__main__':
     # start
     ################################################################################
     import sys
+
     if len(sys.argv) > 1:
         filename = sys.argv[1]
         f = open(filename)
     else:
-        f = sys.stdin
+        # https://stackoverflow.com/questions/3670323/setting-smaller-buffer-size-for-sys-stdin#comment55892838_3670470
+        f = os.fdopen(sys.stdin.fileno(), 'rb', buffering=0)
 
     VoiceNavigator(f)
 
     if f != sys.stdin:
         f.close()
+
+
+    # stop application (incl. all threads)
+    os._exit(1)
+
 
