@@ -161,7 +161,8 @@ class Window(Gtk.Window):
         for c in self.drawing.fix.get_children():
             self.drawing.fix.remove(c)
 
-        for i in self.drawing.actions.keys():
+        acts = list(self.drawing.actions.keys())
+        for i in acts:
             i.draw(self.drawing)
 
         self.region = self.get_mask()
