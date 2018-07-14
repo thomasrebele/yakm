@@ -14,39 +14,42 @@ from yakm import *
 import draw_gtk as draw
 import input_devices
 
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
 ### helper methods
 
-# https://stackoverflow.com/a/21659588/1562506
-def _find_getch():
-    try:
-        import termios
-    except ImportError:
-        # Windows
-        import msvcrt
-        return msvcrt.getch
-
-    # POSIX system
-    if not stdin.isatty():
-        return lambda: stdin.read(1)
-
-    def _getch():
-        fd = stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
-
-        try:
-            tty.setraw(stdin)
-            new_settings = termios.tcgetattr(fd)
-            # https://unix.stackexchange.com/a/265071/153926
-            new_settings[0] = new_settings[0] | termios.ICRNL
-            termios.tcsetattr(fd, termios.TCSANOW, new_settings)
-            ch = stdin.read(1)
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        return ch
-
-    return _getch
-
-getch = _find_getch()
+# # https://stackoverflow.com/a/21659588/1562506
+# def _find_getch():
+#     try:
+#         import termios
+#     except ImportError:
+#         # Windows
+#         import msvcrt
+#         return msvcrt.getch
+#
+#     # POSIX system
+#     if not stdin.isatty():
+#         return lambda: stdin.read(1)
+#
+#     def _getch():
+#         fd = stdin.fileno()
+#         old_settings = termios.tcgetattr(fd)
+#
+#         try:
+#             tty.setraw(stdin)
+#             new_settings = termios.tcgetattr(fd)
+#             # https://unix.stackexchange.com/a/265071/153926
+#             new_settings[0] = new_settings[0] | termios.ICRNL
+#             termios.tcsetattr(fd, termios.TCSANOW, new_settings)
+#             ch = stdin.read(1)
+#         finally:
+#             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+#         return ch
+#
+#     return _getch
+#
+# getch = _find_getch()
 
 
 
@@ -183,6 +186,7 @@ class VoiceNavigator(Navigator):
 
     def __init__(self, input_file):
         super().__init__()
+        self.input_file = input_file
 
         self.grab_keyboard = lambda: None
         self.ungrab_keyboard = lambda: None
@@ -238,7 +242,7 @@ class VoiceNavigator(Navigator):
         line = ""
         print("reading")
         while True:
-            ch = getch()
+            ch = self.input_file.read(1) #getch()
             if len(ch) == 0:
                 return ""
             char = ord(ch)
@@ -306,6 +310,11 @@ if __name__ == '__main__':
 
     VoiceNavigator(f)
 
+    eprint("closing")
+    eprint("closing")
+    eprint("closing")
+    eprint("closing")
+    eprint("closing")
     if f != sys.stdin:
         f.close()
 
