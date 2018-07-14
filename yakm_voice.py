@@ -249,9 +249,6 @@ class VoiceNavigator(Navigator):
             print(chr(char), end="", flush=True) # show input on terminal
             # print("read " + chr(char), flush=True) # debug
 
-            self.label.text = prev + "\n" + line
-            self.vis.refresh()
-
             if char in {3,4}:
                 raise KeyboardInterrupt
             elif 32 <= char <= 126:
@@ -261,6 +258,9 @@ class VoiceNavigator(Navigator):
             elif char == ord('\n'):
                 print("read line: " + line)
                 return line + "\n"
+
+            self.label.text = prev + "\n" + line
+            self.vis.refresh()
 
 
 if __name__ == '__main__':
