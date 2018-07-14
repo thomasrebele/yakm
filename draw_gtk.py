@@ -35,9 +35,13 @@ class Line(base.Line):
         pass
 
 class Label(base.Label):
+    lock = threading.RLock()
+    layout_lbl = Gtk.Label()
+    layout = layout_lbl.get_layout()
+    fd = Pango.FontDescription("Serif 20")
+
     def __init__(self):
         self.lbl = Gtk.Label()
-        self.fd = Pango.FontDescription("Serif 20")
         self._text = "<label>"
         super().__init__()
 
@@ -64,13 +68,15 @@ class Label(base.Label):
         if hasattr(self, "width") and not changed:
             return self.width, self.height
 
-        # https://stackoverflow.com/a/23187879/1562506
-        lbl = Gtk.Label()
-        layout = lbl.get_layout()
-        layout.set_markup(self.text)
-        layout.set_font_description(self.fd)
-        self.width, self.height = layout.get_pixel_size()
-        return self.width, self.height
+        self.lock.acquire()
+        try:
+            # https://stackoverflow.com/a/23187879/1562506
+            self.layout.set_markup(self.text)
+            self.layout.set_font_description(self.fd)
+            self.width, self.height = self.layout.get_pixel_size()
+            return self.width, self.height
+        finally:
+            self.lock.release()
 
     def region(self):
         w,h = self.size()
