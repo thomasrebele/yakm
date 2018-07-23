@@ -118,10 +118,6 @@ class Window(Gtk.Window):
         self.drawing = drawing
         self.click_box_width = 1
 
-        self.set_app_paintable(True)
-        self.set_type_hint(Gdk.WindowTypeHint.DOCK)
-        self.set_keep_below(True)
-
         self.screen = self.get_screen()
         self.root = self.screen.get_root_window()
 
@@ -137,16 +133,20 @@ class Window(Gtk.Window):
         self.drawing.fix = Gtk.Fixed()
         self.add(self.drawing.fix)
 
-
-
         self.resize(self.screen.get_width(), self.screen.get_height())
         self.move(0,0)
 
         self.region = self.get_mask()
         self.shape_combine_region(self.region)
 
-
         self.show_all()
+
+    def show_all(self):
+        self.set_app_paintable(True)
+        self.set_type_hint(Gdk.WindowTypeHint.DOCK)
+        self.set_keep_below(True)
+        self.present()
+        super().show_all()
 
     def get_mask(self):
         w, h = self.get_size()
