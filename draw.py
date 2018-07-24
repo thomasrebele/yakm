@@ -42,7 +42,7 @@ class Label(Action):
         self.y = 0
         self.anchor_x = 0.5
         self.anchor_y = 0.5
-        self.text = "<label>"
+        self.text = "_label_"
         self.padding = 2
 
     def size(self, drawing):

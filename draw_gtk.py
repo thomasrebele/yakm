@@ -6,13 +6,15 @@ import threading
 from time import sleep
 from subprocess import call
 
+import gi
+gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, Pango, GdkPixbuf, GObject, GLib
 import cairo
 
-
+import common
+logger = common.logger(__name__)
 
 import draw as base
-
 Action = base.Action
 
 class Rectangle(base.Rectangle):
@@ -42,7 +44,7 @@ class Label(base.Label):
 
     def __init__(self):
         self.lbl = Gtk.Label()
-        self._text = "<label>"
+        self._text = "_label_"
         super().__init__()
 
     @property
@@ -137,7 +139,7 @@ class Window(Gtk.Window):
         self.show_all()
 
     def show_all(self):
-        print([self.screen.get_width(), self.screen.get_height()])
+        logger.debug([self.screen.get_width(), self.screen.get_height()])
         self.resize(self.screen.get_width(), self.screen.get_height())
         self.move(0,0)
 
@@ -159,7 +161,7 @@ class Window(Gtk.Window):
             if r:
                 region.union(r)
             else:
-                print("warning: no region for " + str(i))
+                logger.warning("warning: no region for " + str(i))
 
         p = self.root.get_pointer()
         self.cut_pointer(region, p.x, p.y)
@@ -255,11 +257,11 @@ class Drawing(base.Drawing):
 import signal
 
 def sigabrt_handler():
-    print("SIGABRT received")
+    logger.error("SIGABRT received")
     pass
 
 signal.signal(signal.SIGABRT, sigabrt_handler)
-print("registered SIGABRT handler")
+logger.debug("registered SIGABRT handler")
 
 if __name__ == '__main__':
     draw = Drawing()

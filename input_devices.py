@@ -10,6 +10,10 @@ import Xlib
 from Xlib import X, display, XK
 from Xlib.ext.xtest import fake_input
 
+import common
+logger = common.logger(__name__)
+
+
 key_mods = {
     "shift": X.ShiftMask,
     "ctrl": X.ControlMask,

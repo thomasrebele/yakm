@@ -9,8 +9,10 @@ from subprocess import call
 from Xlib import X, display, Xutil
 import Xlib as xlib
 
-import draw as base
+import common
+logger = common.logger(__name__)
 
+import draw as base
 Action = base.Action
 
 class Rectangle(base.Rectangle):

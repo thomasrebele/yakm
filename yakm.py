@@ -22,6 +22,8 @@ from collections import defaultdict
 import draw_gtk as draw
 #import draw_xlib as draw
 import input_devices
+import common
+logger = common.logger("yakm")
 
 
 try:
@@ -87,7 +89,7 @@ prev_def.update(dir())
 
 def warp(state):
     """Move the mouse to the middle of the zone"""
-    print("moving mouse to " + str(state.zone.x) + " " + str(state.zone.y))
+    logger.debug("moving mouse to " + str(state.zone.x) + " " + str(state.zone.y))
     state.nav.move(state.zone.x, state.zone.y)
 
 def start(state):
@@ -114,11 +116,11 @@ def clear(state):
 
 def info(state):
     """Write information about the current state to stdout"""
-    print("bindings:")
+    logger.debug("bindings:")
     for key, action in state.nav.key_bindings().items():
-        print("    key " + str(key) + " -> " + str(get_cmd(action)))
+        logger.debug("    key " + str(key) + " -> " + str(get_cmd(action)))
     win = state.nav.input.window()
-    print("focused window: " + str(win))
+    logger.debug("focused window: " + str(win))
 
 
 def ignore(_state):
@@ -220,7 +222,7 @@ def cell_select(col, row):
     """Set the zone to the cell with grid coordinates (col, row)"""
 
     def _upd(state, col=col, row=row):
-        print(state)
+        logger.debug(state)
         if col > state.grid.w or row > state.grid.h:
             return
 
@@ -246,7 +248,7 @@ def row_select(row):
     """Select the specified row and activate column selection"""
 
     def _upd(state, row=row):
-        print("selecting row " +str(row))
+        logger.debug("selecting row " +str(row))
         top = state.zone.top() + row / state.grid.h  * state.zone.h
         state.zone.y = top + 0.5 * state.zone.h / state.grid.h
         state.zone.h = max(state.grid.h, state.zone.h / state.grid.h)
@@ -262,7 +264,7 @@ def col_select(col):
     """Select the specified col"""
 
     def _upd(state, col=col):
-        print("selecting col " +str(col))
+        logger.debug("selecting col " +str(col))
         left = state.zone.left() + col / state.grid.w  * state.zone.w
         state.zone.x = left + 0.5 * state.zone.w / state.grid.w
         state.zone.w = max(state.grid.w, state.zone.w / state.grid.w)
@@ -319,7 +321,7 @@ def press_key(to_press):
 ###
 
 commands = set(dir()).difference(prev_def)
-print(commands)
+logger.debug(commands)
 
 
 # annotate functions without arguments
@@ -690,7 +692,7 @@ class MarkMode(Mode):
             if not cond.lower() in str(win):
                 continue
             result.update(bindings)
-        print(result)
+        logger.debug(result)
         return result
 
     def apply(self, state):
@@ -751,7 +753,7 @@ class Navigator:
 
     def do_step(self, state):
         """Add the current step to the history"""
-        print("do " + str(state))
+        logger.debug("do " + str(state))
         # TODO: only add state if it has changed
         # something like
         #    if len(self.history) == 0: state != self.history[-1]:
@@ -764,7 +766,7 @@ class Navigator:
             self.state = self.history[-1].copy()
             self.state.update(undoable=False)
 
-            print("roling back to state " + str(self.state))
+            logger.debug("roling back to state " + str(self.state))
 
 
 
@@ -857,5 +859,5 @@ if __name__ == '__main__':
     ################################################################################
 
     KeyNavigator()
-    print("started ...")
+    logger.info("started ...")
 
