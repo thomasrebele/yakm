@@ -160,7 +160,7 @@ def move_right(ratio):
     """Move the zone right by ratio*width pixels"""
 
     def _upd(state, ratio=ratio):
-        state.zone.x = min(state.screen.w, state.zone.x + state.zone.w * ratio)
+        state.zone.x = min(state.screen.width(), state.zone.x + state.zone.w * ratio)
     return annotate(_upd, "move_right " + str(ratio))
 
 def move_up(ratio):
@@ -174,14 +174,14 @@ def move_down(ratio):
     """Move the zone down by ratio*height pixels"""
 
     def _upd(state, ratio=ratio):
-        state.zone.y = min(state.screen.h, state.zone.y + state.zone.h * ratio)
+        state.zone.y = min(state.screen.height(), state.zone.y + state.zone.h * ratio)
     return annotate(_upd, "move_down " + str(ratio))
 
 def full(state):
     """Make the zone use the whole screen"""
 
-    state.zone.w = state.screen.w
-    state.zone.h = state.screen.h
+    state.zone.w = state.screen.width()
+    state.zone.h = state.screen.height()
     state.zone.x = state.zone.w / 2
     state.zone.y = state.zone.h / 2
 
@@ -340,6 +340,15 @@ class Size:
     def __str__(self):
         return "size: " + str(self.w) + "," + str(self.h)
 
+class ScreenSize:
+    def __init__(self, vis):
+        self.vis = vis
+        self.width = vis.screen_width
+        self.height = vis.screen_height
+
+    def __str__(self):
+        return "size: " + str(self.width()) + "," + str(self.height())
+
 class State:
     """This class tracks the state of the navigation. This includes
     - the current zone: the region that the user selected
@@ -351,11 +360,7 @@ class State:
     def __init__(self, nav):
         # references
         self.nav = nav
-
-        # info
-        self.screen = Size()
-        self.screen.w = nav.input.w
-        self.screen.h = nav.input.h
+        self.screen = ScreenSize(nav.vis)
 
         # state
         self.mode = []
@@ -698,8 +703,8 @@ class MarkMode(Mode):
 
         if not bindings:
             label = draw.Label()
-            label.x = state.screen.w / 2
-            label.y = state.screen.h / 2
+            label.x = state.screen.width() / 2
+            label.y = state.screen.height() / 2
             label.text = "no marks"
             state.nav.draw(label)
 

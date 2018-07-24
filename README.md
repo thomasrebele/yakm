@@ -75,16 +75,16 @@ In that case, you have to specify it in the configuration file:
 Drawing
 ---
 
-### Xlib
-The Xlib drawing module directly draws on the screen.
-Currently it uses the external command `xrefresh` to remove previously drawn lines.
-This causes a noticable flickering.
-
 ### Gtk
 The Gtk drawing module uses a GTK window. 
 The shape of the window is modified, so that it only covers those pixels that are used for drawing the lines or labels.
 This mimics the behavior of keynav (although keynav uses Xlib for this purpose). 
 This module still contains some bugs that might cause fatal crashes.
+
+### Xlib (deprecated)
+The Xlib drawing module directly draws on the screen.
+Currently it uses the external command `xrefresh` to remove previously drawn lines.
+This causes a noticable flickering.
 
 Caveats
 ---

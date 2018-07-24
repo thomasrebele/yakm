@@ -133,15 +133,17 @@ class Window(Gtk.Window):
         self.drawing.fix = Gtk.Fixed()
         self.add(self.drawing.fix)
 
+
+        self.show_all()
+
+    def show_all(self):
+        print([self.screen.get_width(), self.screen.get_height()])
         self.resize(self.screen.get_width(), self.screen.get_height())
         self.move(0,0)
 
         self.region = self.get_mask()
         self.shape_combine_region(self.region)
 
-        self.show_all()
-
-    def show_all(self):
         self.set_app_paintable(True)
         self.set_type_hint(Gdk.WindowTypeHint.DOCK)
         self.set_keep_below(True)
@@ -243,6 +245,12 @@ class Drawing(base.Drawing):
         super().disable()
         #self.window.hide()
         self.enabled = False
+
+    def screen_width(self):
+        return self.window.screen.get_width()
+
+    def screen_height(self):
+        return self.window.screen.get_height()
 
 import signal
 

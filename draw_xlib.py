@@ -153,6 +153,13 @@ class Drawing(base.Drawing):
             a.draw(self)
         self.d.flush()
 
+    def screen_width(self):
+        return self.window.get_geometry().width
+
+    def screen_height(self):
+        return self.window.get_geometry().height
+
+
 
 if __name__ == '__main__':
     draw = Drawing()
