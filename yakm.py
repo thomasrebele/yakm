@@ -485,6 +485,11 @@ class Mode:
             def _upd(action=action, nav=state.nav):
                 """wrap action in a lambda function"""
 
+                # save current cursor position
+                pointer = nav.pointer()
+                nav.state.zone.x = pointer.x
+                nav.state.zone.y = pointer.y
+
                 for act in action:
                     act(nav.state)
 
@@ -753,6 +758,7 @@ class Navigator:
 
     def do_step(self, state):
         """Add the current step to the history"""
+
         logger.debug("do " + str(state))
         # TODO: only add state if it has changed
         # something like
