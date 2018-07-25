@@ -375,7 +375,7 @@ class State:
         self._settings = {} # settings for modes
 
     def __str__(self):
-        result = "state: \n" + \
+        result = "state: " + \
             "  zone " + str(self.zone) + \
             "  grid " + str(self.grid) + \
             " mode " + ",".join([str(i.__class__.__name__) for i in self.mode])

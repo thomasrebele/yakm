@@ -156,7 +156,7 @@ class Window(Gtk.Window):
         w, h = self.get_size()
         region = cairo.Region(cairo.RectangleInt(width=0, height=0))
 
-        for i in self.drawing.actions.keys():
+        for i in list(self.drawing.actions.keys()):
             r = i.region()
             if r:
                 region.union(r)
