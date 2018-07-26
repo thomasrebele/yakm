@@ -94,5 +94,6 @@ Caveats
 * Drag and drop does not work in some programs (e.g., Zotero)
 * Key bindings are not updated when user executes a setxkbmap command
 * YAKM does not react to 'xdotool key Left' in grid mode
-* Some commands of keynav are not yet implemented (e.g., grid-nav off/toggle, record, sh, cut-\*, ...)
+* Programs started with 'sh' close after stopping YAKM
+* Some commands of keynav are not yet implemented (e.g., grid-nav off/toggle, record, cut-\*, ...)
 

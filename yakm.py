@@ -13,7 +13,8 @@ import string
 import json
 import fcntl
 from sys import exit
-from subprocess import call
+import subprocess
+import os
 
 import pathlib
 import os.path
@@ -72,6 +73,16 @@ with command_definitions(lambda: globals()):
         for k in state.nav.key_bindings():
             state.nav.input.unregister_key(k)
 
+    def sh(command, state):
+        """Execute a command"""
+        try:
+            pid = os.fork()
+        except OSError as e:
+            raise e
+        if pid == 0:
+            subprocess.Popen(command, shell=True, close_fds=True)
+            os._exit(0)
+        print("done")
 
     def info(state):
         """Write information about the current state to stdout"""
@@ -147,13 +158,11 @@ with command_definitions(lambda: globals()):
     def enlarge(factor, state):
         """Multiply the sides of the zone by factor.
         The center of the zone stays at the same position"""
-
         state.zone.w *= factor
         state.zone.h *= factor
 
     def grid(width, height, state):
         """Activate grid mode with a width x height cells"""
-
         state.grid.w = width
         state.grid.h = height
         state.enter_mode(GridMode(state.nav, configuration["bindings"]))
@@ -243,7 +252,7 @@ with command_definitions(lambda: globals()):
     def press_key(to_press, state):
         """Type a key or a key combination"""
 
-        call(["xdotool", "key", str(to_press)])
+        subprocess.call(["xdotool", "key", str(to_press)])
 
 
 ################################################################################
