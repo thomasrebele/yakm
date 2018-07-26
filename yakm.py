@@ -161,19 +161,16 @@ with command_definitions(lambda: globals()):
 
     def cell_select(col, row, state):
         """Set the zone to the cell with grid coordinates (col, row)"""
-
-        logger.debug(state)
         if col > state.grid.w or row > state.grid.h:
+            return
 
-            left = state.zone.left() + col / state.grid.w  * state.zone.w
-            top = state.zone.top() + row / state.grid.h  * state.zone.h
+        left = state.zone.left() + col / state.grid.w  * state.zone.w
+        top = state.zone.top() + row / state.grid.h  * state.zone.h
 
-            state.zone.w = max(state.grid.w, state.zone.w / state.grid.w)
-            state.zone.h = max(state.grid.h, state.zone.h / state.grid.h)
-            state.zone.x = left + state.zone.w/2
-            state.zone.y = top + state.zone.h/2
-
-        return annotate(_upd, "cell_select " + str(col) + " " + str(row))
+        state.zone.w = max(state.grid.w, state.zone.w / state.grid.w)
+        state.zone.h = max(state.grid.h, state.zone.h / state.grid.h)
+        state.zone.x = left + state.zone.w/2
+        state.zone.y = top + state.zone.h/2
 
     # grid navigation
     def grid_nav(state):
@@ -405,16 +402,20 @@ class Mode:
             def _upd(action=action, nav=state.nav):
                 """wrap action in a lambda function"""
 
-                # save current cursor position
+                # update zone if user has moved the cursor
                 pointer = nav.pointer()
-                nav.state.zone.x = pointer.x
-                nav.state.zone.y = pointer.y
+                if nav.prev_pointer != pointer:
+                    nav.state.zone.x = pointer.x
+                    nav.state.zone.y = pointer.y
 
                 for act in action:
                     act(nav.state)
 
                 if not history_back in action:
                     nav.state.update()
+
+                # store cursor positions after our actions
+                nav.prev_pointer = nav.pointer()
 
             _upd = annotate(_upd, get_cmd(action))
             state.nav.input.register_key(key, _upd)
@@ -665,6 +666,7 @@ class Navigator:
         self.move = self.input.move
         self.click = self.input.click
         self.pointer = self.input.pointer
+        self.prev_pointer = self.pointer()
 
         self.draw = self.vis.draw
         self.undraw = self.vis.undraw

@@ -1,6 +1,7 @@
 
 import logging
 import contextlib
+from collections import namedtuple
 
 def logger(name):
     # setup logger
@@ -22,6 +23,9 @@ def logger(name):
     return logger
 
 _logger = logger(__name__)
+
+# dataclasses
+Coord = namedtuple("Coord", "x y")
 
 
 

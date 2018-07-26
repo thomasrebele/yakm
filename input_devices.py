@@ -11,6 +11,7 @@ from Xlib import X, display, XK
 from Xlib.ext.xtest import fake_input
 
 import common
+from common import Coord
 logger = common.logger(__name__)
 
 
@@ -42,10 +43,6 @@ keys_to_code = {
 disp = Xlib.display.Display()
 screen = disp.screen()
 root = screen.root
-
-class Coord:
-    x = 0
-    y = 0
 
 def get_keycode(key):
     mod = X.NONE
@@ -198,9 +195,7 @@ class Input:
         x = root.query_pointer().win_x
         y = root.query_pointer().win_y
 
-        p = Coord()
-        p.x, p.y = x, y
-        return p
+        return Coord(x, y)
 
     def window(self):
         win = root.query_pointer().child or root
