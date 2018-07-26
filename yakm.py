@@ -22,8 +22,8 @@ from collections import defaultdict
 import draw_gtk as draw
 #import draw_xlib as draw
 import input_devices
-import common
-logger = common.logger("yakm")
+from common import *
+logger = logger("yakm")
 
 
 try:
@@ -40,214 +40,152 @@ except Exception as exception:
     print(exception)
     print("WARNING: input_dialog not available")
 
-
-def annotate(function, cmd):
-    """Add a string representation to the command"""
-    function.cmd = str(cmd)
-    return function
-
-def get_cmd(value):
-    """Obtain the string representation of a command"""
-    if callable(value):
-        try:
-            return value.cmd
-        except:
-            if not value.__name__:
-                return str(value)
-            return value.__name__
-
-    if isinstance(value, list):
-        cmds = [get_cmd(fn) for fn in value]
-        return ", ".join(cmds)
-
-    return None
-
-
-# https://stackoverflow.com/a/1633483/1562506
-def iter_first_last(iterator):
-    """Iterator which marks the first and the last item.
-    Usage: for item, is_first, is_last in iter_first_last(...)
-    """
-
-    iterator = iter(iterator)
-    prev = next(iterator)
-    first = True
-    for item in iterator:
-        yield prev, first, False
-        first = False
-        prev = item
-    # Last item
-    yield prev, first, True
-
-
-prev_def = set(dir())
-prev_def.update(dir())
-
 ################################################################################
 # commands
 ################################################################################
 
-def warp(state):
-    """Move the mouse to the middle of the zone"""
-    logger.debug("moving mouse to " + str(state.zone.x) + " " + str(state.zone.y))
-    state.nav.move(state.zone.x, state.zone.y)
+with command_definitions(lambda: globals()):
 
-def start(state):
-    """Start the navigation. Enters the default mode if no other mode is active"""
-    if not state.mode:
-        state.enter_mode(Mode(state.nav, configuration["bindings"]))
+    def warp(state):
+        """Move the mouse to the middle of the zone"""
+        logger.debug("moving mouse to " + str(state.zone.x) + " " + str(state.zone.y))
+        state.nav.move(state.zone.x, state.zone.y)
 
-    state.nav.grab_keyboard()
+    def start(state):
+        """Start the navigation. Enters the default mode if no other mode is active"""
+        if not state.mode:
+            state.enter_mode(Mode(state.nav, configuration["bindings"]))
 
-def exit_mode(state):
-    """Exit the current mode"""
-    state.exit_mode()
+        state.nav.grab_keyboard()
 
-def end(state):
-    """Exit all modes"""
-    state.exit_mode(all_modes=True)
+    def exit_mode(state):
+        """Exit the current mode"""
+        state.exit_mode()
 
-
-def clear(state):
-    """Clear all keybindings"""
-    for k in state.nav.key_bindings():
-        state.nav.input.unregister_key(k)
+    def end(state):
+        """Exit all modes"""
+        state.exit_mode(all_modes=True)
 
 
-def info(state):
-    """Write information about the current state to stdout"""
-    logger.debug("bindings:")
-    for key, action in state.nav.key_bindings().items():
-        logger.debug("    key " + str(key) + " -> " + str(get_cmd(action)))
-    win = state.nav.input.window()
-    logger.debug("focused window: " + str(win))
+    def clear(state):
+        """Clear all keybindings"""
+        for k in state.nav.key_bindings():
+            state.nav.input.unregister_key(k)
 
 
-def ignore(_state):
-    """This command does nothing"""
-    pass
+    def info(state):
+        """Write information about the current state to stdout"""
+        logger.debug("bindings:")
+        for key, action in state.nav.key_bindings().items():
+            logger.debug("    key " + str(key) + " -> " + str(get_cmd(action)))
+        win = state.nav.input.window()
+        logger.debug("focused window: " + str(win))
 
 
-def click(button):
-    """Do a mouse click. 'button' is an integer specifying the mouse button:
-    1: left, 2: middle, 3: right, 4/5: scroll"""
+    def ignore(_state):
+        """This command does nothing"""
+        pass
 
-    return annotate(lambda state: state.nav.click(button), "click " + str(button))
 
-def drag(button):
-    """Start or stop dragging. This simulates a pressed mouse button"""
+    def click(button, state):
+        """Do a mouse click. 'button' is an integer specifying the mouse button:
+        1: left, 2: middle, 3: right, 4/5: scroll"""
 
-    def _upd(state, button=button):
+        state.nav.click(button)
+
+    def drag(button, state):
+        """Start or stop dragging. This simulates a pressed mouse button"""
+
         actions = ["release"] if state.drag else ["press"]
         state.drag = not state.drag
         state.nav.click(button, actions=actions)
-    return annotate(_upd, "drag " + str(button))
 
-def move_to(x_coord, y_coord):
-    """Move the center of the zone to the specified coordinates"""
+    def move_to(x_coord, y_coord, state):
+        """Move the center of the zone to the specified coordinates"""
 
-    def _upd(state, x_coord=x_coord, y_coord=y_coord):
         state.zone.x = x_coord
         state.zone.y = y_coord
-    return annotate(_upd, "move_to " + str(x_coord) + " " + str(y_coord))
 
-def move_left(ratio):
-    """Move the zone left by ratio*width pixels"""
+    def move_left(ratio, state):
+        """Move the zone left by ratio*width pixels"""
 
-    def _upd(state, ratio=ratio):
         state.zone.x = max(0, state.zone.x - state.zone.w * ratio)
-    return annotate(_upd, "move_left " + str(ratio))
 
-def move_right(ratio):
-    """Move the zone right by ratio*width pixels"""
+    def move_right(ratio, state):
+        """Move the zone right by ratio*width pixels"""
 
-    def _upd(state, ratio=ratio):
         state.zone.x = min(state.screen.width(), state.zone.x + state.zone.w * ratio)
-    return annotate(_upd, "move_right " + str(ratio))
 
-def move_up(ratio):
-    """Move the zone up by ratio*height pixels"""
+    def move_up(ratio, state):
+        """Move the zone up by ratio*height pixels"""
 
-    def _upd(state, ratio=ratio):
         state.zone.y = max(0, state.zone.y - state.zone.h * ratio)
-    return annotate(_upd, "move_up " + str(ratio))
 
-def move_down(ratio):
-    """Move the zone down by ratio*height pixels"""
+    def move_down(ratio, state):
+        """Move the zone down by ratio*height pixels"""
 
-    def _upd(state, ratio=ratio):
         state.zone.y = min(state.screen.height(), state.zone.y + state.zone.h * ratio)
-    return annotate(_upd, "move_down " + str(ratio))
 
-def full(state):
-    """Make the zone use the whole screen"""
+    def full(state):
+        """Make the zone use the whole screen"""
 
-    state.zone.w = state.screen.width()
-    state.zone.h = state.screen.height()
-    state.zone.x = state.zone.w / 2
-    state.zone.y = state.zone.h / 2
+        state.zone.w = state.screen.width()
+        state.zone.h = state.screen.height()
+        state.zone.x = state.zone.w / 2
+        state.zone.y = state.zone.h / 2
 
-def cursorzoom(width, height):
-    """Set the size of the zone to width and heigth,
-    and move it so that the pointer is at the center of the zone"""
+    def cursorzoom(width, height, state):
+        """Set the size of the zone to width and height,
+        and move it so that the pointer is at the center of the zone"""
 
-    def _upd(state, width=width, height=height):
         state.zone.w = width
         state.zone.h = height
         pointer = state.nav.pointer()
         state.zone.x = pointer.x
         state.zone.y = pointer.y
-    return annotate(_upd, "cursorzoom " + str(width) + " " + str(height))
 
-def enlarge(factor):
-    """Multiply the sides of the zone by factor.
-    The center of the zone stays at the same position"""
+    def enlarge(factor, state):
+        """Multiply the sides of the zone by factor.
+        The center of the zone stays at the same position"""
 
-    def _upd(state, factor=factor):
         state.zone.w *= factor
         state.zone.h *= factor
-    return annotate(_upd, "enlarge " + str(factor))
 
-def grid(width, height):
-    """Activate grid mode with a width x heigth cells"""
+    def grid(width, height, state):
+        """Activate grid mode with a width x height cells"""
 
-    def _upd(state, width=width, heigth=height):
         state.grid.w = width
-        state.grid.h = heigth
+        state.grid.h = height
         state.enter_mode(GridMode(state.nav, configuration["bindings"]))
 
-    return annotate(_upd, "grid " + str(width) + " " + str(height))
 
-def cell_select(col, row):
-    """Set the zone to the cell with grid coordinates (col, row)"""
+    def cell_select(col, row, state):
+        """Set the zone to the cell with grid coordinates (col, row)"""
 
-    def _upd(state, col=col, row=row):
         logger.debug(state)
         if col > state.grid.w or row > state.grid.h:
-            return
 
-        left = state.zone.left() + col / state.grid.w  * state.zone.w
-        top = state.zone.top() + row / state.grid.h  * state.zone.h
+            left = state.zone.left() + col / state.grid.w  * state.zone.w
+            top = state.zone.top() + row / state.grid.h  * state.zone.h
 
-        state.zone.w = max(state.grid.w, state.zone.w / state.grid.w)
-        state.zone.h = max(state.grid.h, state.zone.h / state.grid.h)
-        state.zone.x = left + state.zone.w/2
-        state.zone.y = top + state.zone.h/2
+            state.zone.w = max(state.grid.w, state.zone.w / state.grid.w)
+            state.zone.h = max(state.grid.h, state.zone.h / state.grid.h)
+            state.zone.x = left + state.zone.w/2
+            state.zone.y = top + state.zone.h/2
 
-    return annotate(_upd, "cell_select " + str(col) + " " + str(row))
+        return annotate(_upd, "cell_select " + str(col) + " " + str(row))
 
-# grid navigation
-def grid_nav(state):
-    """Start grid navigation, i.e., use grid_nav_chars for selecting rows"""
+    # grid navigation
+    def grid_nav(state):
+        """Start grid navigation, i.e., use grid_nav_chars for selecting rows"""
 
-    # switch to row selection mode
-    state.grid_nav = "row"
+        # switch to row selection mode
+        state.grid_nav = "row"
 
 
-def row_select(row):
-    """Select the specified row and activate column selection"""
+    def row_select(row, state):
+        """Select the specified row and activate column selection"""
 
-    def _upd(state, row=row):
         logger.debug("selecting row " +str(row))
         top = state.zone.top() + row / state.grid.h  * state.zone.h
         state.zone.y = top + 0.5 * state.zone.h / state.grid.h
@@ -258,12 +196,10 @@ def row_select(row):
         # switch to col selection mode
         state.grid_nav = "col"
 
-    return annotate(_upd, "row_select " + str(row))
 
-def col_select(col):
-    """Select the specified col"""
+    def col_select(col, state):
+        """Select the specified col"""
 
-    def _upd(state, col=col):
         logger.debug("selecting col " +str(col))
         left = state.zone.left() + col / state.grid.w  * state.zone.w
         state.zone.x = left + 0.5 * state.zone.w / state.grid.w
@@ -275,58 +211,42 @@ def col_select(col):
         grid_nav(state)
 
 
-    return annotate(_upd, "col_select " + str(col))
 
-def dart_nav(state):
-    """Enter grid mode with dart navigation"""
+    def dart_nav(state):
+        """Enter grid mode with dart navigation"""
 
-    # switch to grid mode
-    grid_width = len(configuration["dart_nav_chars"][0])
-    grid_height = len(configuration["dart_nav_chars"])
-    grid(grid_width, grid_height)(state)
+        # switch to grid mode
+        grid_width = len(configuration["dart_nav_chars"][0])
+        grid_height = len(configuration["dart_nav_chars"])
+        grid(grid_width, grid_height)(state)
 
-    # switch to dart selection mode
-    state.grid_nav = "dart"
-
+        # switch to dart selection mode
+        state.grid_nav = "dart"
 
 
-def history_back(state):
-    """Roll back the navigation to the state before the last key stroke"""
 
-    state.nav.undo_step()
+    def history_back(state):
+        """Roll back the navigation to the state before the last key stroke"""
 
-def record_mark(state):
-    """Save the current pointer position as a mark
-    associated with the next pressed letter"""
+        state.nav.undo_step()
 
-    state.enter_mode(MarkMode(state.nav, configuration["bindings"], record=True))
+    def record_mark(state):
+        """Save the current pointer position as a mark
+        associated with the next pressed letter"""
 
-def apply_mark(state):
-    """On the next pressed letter, move the zone
-    and the pointer to the position saved for that letter"""
+        state.enter_mode(MarkMode(state.nav, configuration["bindings"], record=True))
 
-    state.enter_mode(MarkMode(state.nav, configuration["bindings"]))
+    def apply_mark(state):
+        """On the next pressed letter, move the zone
+        and the pointer to the position saved for that letter"""
+
+        state.enter_mode(MarkMode(state.nav, configuration["bindings"]))
 
 
-def press_key(to_press):
-    """Type a key or a key combination"""
+    def press_key(to_press, state):
+        """Type a key or a key combination"""
 
-    def _upd(state, key=to_press):
         call(["xdotool", "key", str(to_press)])
-
-    return annotate(_upd, "key " + str(to_press))
-
-
-
-###
-
-commands = set(dir()).difference(prev_def)
-logger.debug(commands)
-
-
-# annotate functions without arguments
-for i in [warp, start, clear, info, exit_mode, end, grid_nav, history_back, full]:
-    i = annotate(i, i.__name__)
 
 
 ################################################################################
@@ -830,6 +750,8 @@ if __name__ == '__main__':
         # another instance is running
         print("Warning: another instance is already running, exiting")
         exit(0)
+
+    logger.debug("available commands: %s", commands)
 
     ################################################################################
     # read configuration

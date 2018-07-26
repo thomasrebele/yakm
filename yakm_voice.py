@@ -13,73 +13,37 @@ from subprocess import call
 from yakm import *
 import draw_gtk as draw
 import input_devices
+from common import *
+logger = logger(__name__)
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-### helper methods
-
-# # https://stackoverflow.com/a/21659588/1562506
-# def _find_getch():
-#     try:
-#         import termios
-#     except ImportError:
-#         # Windows
-#         import msvcrt
-#         return msvcrt.getch
-#
-#     # POSIX system
-#     if not stdin.isatty():
-#         return lambda: stdin.read(1)
-#
-#     def _getch():
-#         fd = stdin.fileno()
-#         old_settings = termios.tcgetattr(fd)
-#
-#         try:
-#             tty.setraw(stdin)
-#             new_settings = termios.tcgetattr(fd)
-#             # https://unix.stackexchange.com/a/265071/153926
-#             new_settings[0] = new_settings[0] | termios.ICRNL
-#             termios.tcsetattr(fd, termios.TCSANOW, new_settings)
-#             ch = stdin.read(1)
-#         finally:
-#             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-#         return ch
-#
-#     return _getch
-#
-# getch = _find_getch()
-
-
-
 ### commands
+with command_definitions(lambda: globals()):
 
-def key(to_press):
-    """Type a key or a key combination"""
+    def key(key, state):
+        """Type a key or a key combination"""
 
-    def _upd(state, key=to_press):
         mods = list(state.modifiers.keys())
         if "f_key" in mods:
             if type(key) == int:
                 key = "F" + str(key)
         key = "+".join(mods + [str(key)])
-        print("pressing key " + str(key))
+        logger.trace("pressing key " + str(key))
         call(["xdotool", "key", str(key)])
 
-    return annotate(_upd, "key " + str(to_press))
+    def start(state):
+        """Start the navigation. Enters the default mode if no other mode is active"""
+        if not state.mode:
+            voice_mode = VoiceMode(state.nav, configuration["bindings"])
+            state.enter_mode(voice_mode, grab_keyboard=False)
 
-def start(state):
-    """Start the navigation. Enters the default mode if no other mode is active"""
-    if not state.mode:
-        voice_mode = VoiceMode(state.nav, configuration["bindings"])
-        state.enter_mode(voice_mode, grab_keyboard=False)
-
-def dictate(state):
-    """Start the dictation mode"""
-    mode = DictateMode(state.nav, configuration["bindings"])
-    state.enter_mode(mode, grab_keyboard=False)
-    print("entered dictation mode")
+    def dictate(state):
+        """Start the dictation mode"""
+        mode = DictateMode(state.nav, configuration["bindings"])
+        state.enter_mode(mode, grab_keyboard=False)
+        logger.info("entered dictation mode")
 
 def say(word_count=1):
     """Dictate n words"""
@@ -88,12 +52,11 @@ def say(word_count=1):
         """Start the dictation mode"""
         mode = DictateMode(state.nav, configuration["bindings"], word_count=n)
         state.enter_mode(mode, grab_keyboard=False)
-        print("entered say mode")
+        logger.info("entered say mode")
 
     return annotate(_upd, "say " + str(word_count))
 
-commands.update(["key", "dictate", "say"])
-print(commands)
+commands.update(["say"])
 
 class VoiceMode(Mode):
     def __init__(self, nav, conf):
@@ -133,7 +96,7 @@ class VoiceMode(Mode):
                     mode = state.mode[-1]
                     mode.process(state, keys[1:])
             else:
-                print("I don't understand '" + str(cmd) + "'")
+                logger.warning("I don't understand '" + str(cmd) + "'")
 
     def apply(self, state):
         """Draw visualization of this mode on the screen"""
@@ -157,21 +120,20 @@ class DictateMode(Mode):
 
         if self.word_count > 0:
             k = keys[:self.word_count]
-            print("here " + str(keys))
             self.type(k)
             self.word_count -= len(k)
             if self.word_count == 0:
                 state.exit_mode()
-                print("quitting say mode")
+                logger.info("quitting say mode")
 
         elif keys[0] in configuration["dictate_end"]:
             state.exit_mode()
-            print("quitting dictation mode")
+            logger.info("quitting dictation mode")
         else:
             self.type(keys)
 
     def type(self, keys):
-        print("typing " + str(keys))
+        logger.debug("typing " + str(keys))
         text = str(" ".join(keys))
         if not self.first:
             text = " " + text
@@ -211,7 +173,7 @@ class VoiceNavigator(Navigator):
             if line == '\n': continue
 
             line = line[:-1]
-            print(">" + str(line))
+            logger.trace(">" + str(line))
 
             self.label.text = line
             self.vis.draw(self.label)
@@ -228,26 +190,24 @@ class VoiceNavigator(Navigator):
                         for act in action:
                             act(self.state)
                 else:
-                    print("unknown command: " + str(line))
+                    logger.error("unknown command: " + str(line))
 
 
 
         # TODO: exit on ctrl+c
-        print("exiting voice mode")
+        logger.info("exiting voice mode")
         self.vis.stop()
 
 
     def readline(self):
         prev = self.label.text
         line = ""
-        print("reading")
         while True:
             ch = self.input_file.read(1) #getch()
             if len(ch) == 0:
                 return ""
             char = ord(ch)
             print(chr(char), end="", flush=True) # show input on terminal
-            # print("read " + chr(char), flush=True) # debug
 
             if char in {3,4}:
                 raise KeyboardInterrupt
@@ -256,7 +216,6 @@ class VoiceNavigator(Navigator):
             elif char == ord('\r'):
                 line = ""
             elif char == ord('\n'):
-                print("read line: " + line)
                 return line + "\n"
 
             self.label.text = prev + "\n" + line

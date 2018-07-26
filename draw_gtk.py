@@ -139,7 +139,6 @@ class Window(Gtk.Window):
         self.show_all()
 
     def show_all(self):
-        logger.debug([self.screen.get_width(), self.screen.get_height()])
         self.resize(self.screen.get_width(), self.screen.get_height())
         self.move(0,0)
 
