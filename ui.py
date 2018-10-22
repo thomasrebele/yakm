@@ -45,7 +45,7 @@ class Label(Action):
         self.text = "_label_"
         self.padding = 2
 
-    def size(self, drawing):
+    def size(self, ui):
         print("Warning: Label.size not implemented")
         return (0, 0)
 
@@ -119,7 +119,7 @@ class RepeatingThread:
 
 
 
-class Drawing:
+class UserInterface:
     def __init__(self):
         self.actions = {}
 
@@ -156,9 +156,9 @@ class Drawing:
 
 
 if __name__ == '__main__':
-    draw = Drawing()
-    print(draw.mouse_coords())
+    ui = UserInterface()
+    print(ui.mouse_coords())
 
-    draw.enable()
-    draw.draw(Rectangle(x=500))
+    ui.enable()
+    ui.draw(Rectangle(x=500))
 

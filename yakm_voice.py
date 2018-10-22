@@ -11,7 +11,8 @@ from time import sleep
 from subprocess import call
 
 from yakm import *
-import draw_gtk as draw
+import ui_gtk as ui
+
 import input_devices
 from common import *
 logger = logger(__name__)
@@ -104,7 +105,7 @@ class VoiceMode(Mode):
         label = draw.Label()
         label.x = 1000
         label.y = 500
-        label.text = "test of the the solicitation more word whateversw"
+        label.text = "..."
         state.nav.draw(label)
 
 
@@ -143,7 +144,7 @@ class DictateMode(Mode):
 
 
 class VoiceNavigator(Navigator):
-    """This class coordinates the input, the drawing, and the history.
+    """This class coordinates the input, the user interface, and the history.
     It is the entry point of YAKM"""
 
     def __init__(self, input_file):
@@ -160,7 +161,7 @@ class VoiceNavigator(Navigator):
         self.label.x = 1000
         self.label.y = 500
         self.label.text = ""
-        self.vis.draw(self.label)
+        self.ui.draw(self.label)
 
 
         while True:
@@ -176,8 +177,8 @@ class VoiceNavigator(Navigator):
             logger.trace(">" + str(line))
 
             self.label.text = line
-            self.vis.draw(self.label)
-            self.vis.refresh()
+            self.ui.draw(self.label)
+            self.ui.refresh()
 
             # execute command
             if self.state.mode:
@@ -196,7 +197,7 @@ class VoiceNavigator(Navigator):
 
         # TODO: exit on ctrl+c
         logger.info("exiting voice mode")
-        self.vis.stop()
+        self.ui.stop()
 
 
     def readline(self):
@@ -219,7 +220,7 @@ class VoiceNavigator(Navigator):
                 return line + "\n"
 
             self.label.text = prev + "\n" + line
-            self.vis.refresh()
+            self.ui.refresh()
 
 
 if __name__ == '__main__':

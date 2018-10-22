@@ -21,12 +21,12 @@ import os.path
 from collections import defaultdict
 
 try:
-    import draw_gtk as draw
+    import ui_gtk as ui
 except Exception as exception:
     print(exception)
     print("WARNING: GTK not available, trying Xlib user interface")
 
-    import draw_xlib as draw
+    import ui_xlib as ui
 
 import input_devices
 from common import *
@@ -263,10 +263,10 @@ class Size:
         return "size: " + str(self.w) + "," + str(self.h)
 
 class ScreenSize:
-    def __init__(self, vis):
-        self.vis = vis
-        self.width = vis.screen_width
-        self.height = vis.screen_height
+    def __init__(self, ui):
+        self.ui = ui
+        self.width = ui.screen_width
+        self.height = ui.screen_height
 
     def __str__(self):
         return "size: " + str(self.width()) + "," + str(self.height())
@@ -282,11 +282,11 @@ class State:
     def __init__(self, nav):
         # references
         self.nav = nav
-        self.screen = ScreenSize(nav.vis)
+        self.screen = ScreenSize(nav.ui)
 
         # state
         self.mode = []
-        self.zone = draw.Zone()
+        self.zone = ui.Zone()
         self.grid = Size()
         self.grid.w = 1
         self.grid.h = 1
@@ -319,7 +319,7 @@ class State:
     def enter_mode(self, mode, grab_keyboard=True):
         """Enter a mode"""
 
-        self.nav.vis.enable()
+        self.nav.ui.enable()
         if grab_keyboard:
             self.nav.grab_keyboard()
 
@@ -338,8 +338,8 @@ class State:
         if self.mode:
             self.mode[-1].enter(self)
         else:
-            self.nav.vis.disable()
-            self.nav.vis.refresh()
+            self.nav.ui.disable()
+            self.nav.ui.refresh()
             self.nav.ungrab_keyboard()
 
     def get_current_bindings(self):
@@ -349,7 +349,7 @@ class State:
         return bindings
 
     def update(self, undoable=True):
-        """Update the visualization and set the right mode"""
+        """Update the user interface and set the right mode"""
 
         if self.mode:
             self.mode[-1].apply(self)
@@ -475,14 +475,14 @@ class GridMode(Mode):
 
     def apply(self, state):
         # draw grid
-        state.nav.vis.clear()
-        enabled = state.nav.vis.is_enabled()
+        state.nav.ui.clear()
+        enabled = state.nav.ui.is_enabled()
 
         # do we need this?
         if not enabled:
             return
 
-        state.nav.vis.disable()
+        state.nav.ui.disable()
         self.update_bindings(state)
 
         # draw horizontal lines
@@ -495,7 +495,7 @@ class GridMode(Mode):
             if first_y or last_y or state.grid_nav is None or \
                     state.grid_nav == "row" or state.grid_nav == "dart":
 
-                line = draw.Line()
+                line = ui.Line()
                 line.x1 = state.zone.left()
                 line.x2 = horizontal_until_x
 
@@ -513,7 +513,7 @@ class GridMode(Mode):
             if first_x or last_x or state.grid_nav is None or \
                     state.grid_nav == "col" or state.grid_nav == "dart":
 
-                line = draw.Line()
+                line = ui.Line()
                 line.x1 = state.zone.left() + grid_col * state.zone.w / state.grid.w
                 line.x2 = line.x1
 
@@ -524,43 +524,43 @@ class GridMode(Mode):
         if state.grid_nav == "row":
             delta = state.zone.h / state.grid.h
             for grid_row in range(state.grid.h):
-                label = draw.Label()
+                label = ui.Label()
                 label.x = state.zone.left() + 0.5 * state.zone.w / state.grid.w
                 label.y = state.zone.top() + (grid_row + 0.5) * delta
                 label.text = str(configuration["grid_nav_chars"][grid_row])
 
-                if label.size(state.nav.vis)[1] > delta:
+                if label.size(state.nav.ui)[1] > delta:
                     break
                 state.nav.draw(label)
 
         if state.grid_nav == "col":
             delta = state.zone.w / state.grid.w
             for grid_col in range(state.grid.w):
-                label = draw.Label()
+                label = ui.Label()
                 label.x = state.zone.left() + (grid_col + 0.5) * delta
                 label.y = state.zone.top() + 0.5 * state.zone.h / state.grid.h
                 label.text = str(configuration["grid_nav_chars"][grid_col])
 
-                if label.size(state.nav.vis)[0] > delta:
+                if label.size(state.nav.ui)[0] > delta:
                     break
                 state.nav.draw(label)
 
         if state.grid_nav == "dart":
             delta_x = state.zone.w / state.grid.w
             delta_y = state.zone.h / state.grid.h
-            label = draw.Label()
+            label = ui.Label()
             label.text = "Ig"
-            if max(label.size(state.nav.vis)) < min(delta_x, delta_y):
+            if max(label.size(state.nav.ui)) < min(delta_x, delta_y):
                 for grid_col in range(state.grid.w):
                     for grid_row in range(state.grid.h):
-                        label = draw.Label()
+                        label = ui.Label()
                         label.x = state.zone.left() + (grid_col + 0.5) * delta_x
                         label.y = state.zone.top() + (grid_row + 0.5) * delta_y
                         label.text = str(configuration["dart_nav_chars"][grid_row][grid_col])
                         state.nav.draw(label)
 
-        state.nav.vis.refresh()
-        state.nav.vis.enable()
+        state.nav.ui.refresh()
+        state.nav.ui.enable()
 
 class MarkMode(Mode):
     """The mark mode allows the user to "bookmark" the current pointer position as a letter.
@@ -627,27 +627,27 @@ class MarkMode(Mode):
     def apply(self, state):
         # draw grid
         state.nav.undraw()
-        enabled = state.nav.vis.is_enabled()
-        state.nav.vis.disable()
+        enabled = state.nav.ui.is_enabled()
+        state.nav.ui.disable()
 
         bindings = self.bindings()
 
         if not bindings:
-            label = draw.Label()
+            label = ui.Label()
             label.x = state.screen.width() / 2
             label.y = state.screen.height() / 2
             label.text = "no marks"
             state.nav.draw(label)
 
         for key, coord in bindings.items():
-            label = draw.Label()
+            label = ui.Label()
             label.x = coord[0]
             label.y = coord[1]
             label.text = key
             state.nav.draw(label)
 
         if enabled:
-            state.nav.vis.enable()
+            state.nav.ui.enable()
 
     def save(self, _state):
         """save the current marks in a file in the config dir"""
@@ -658,7 +658,7 @@ class MarkMode(Mode):
 class Navigator:
     def __init__(self):
         # components
-        self.vis = draw.Drawing()
+        self.ui = ui.UserInterface()
         self.input = input_devices.Input()
 
         # state
@@ -671,15 +671,15 @@ class Navigator:
         self.pointer = self.input.pointer
         self.prev_pointer = self.pointer()
 
-        self.draw = self.vis.draw
-        self.undraw = self.vis.undraw
+        self.draw = self.ui.draw
+        self.undraw = self.ui.undraw
 
         self.key_bindings = self.input.key_bindings
         self.grab_keyboard = self.input.grab_keyboard
         self.ungrab_keyboard = self.input.ungrab_keyboard
 
     def __del__(self):
-        self.vis.stop()
+        self.ui.stop()
 
     def do_step(self, state):
         """Add the current step to the history"""
@@ -702,7 +702,7 @@ class Navigator:
 
 
 class KeyNavigator(Navigator):
-    """This class coordinates the input, the drawing, and the history.
+    """This class coordinates the input, the user interface, and the history.
     It is the entry point of YAKM"""
 
     def __init__(self):
@@ -724,16 +724,16 @@ class KeyNavigator(Navigator):
     def input_dialog(self, msg=""):
         """Ask the user to type in text"""
 
-        enabled = self.vis.is_enabled()
-        self.vis.disable()
-        self.vis.refresh()
+        enabled = self.ui.is_enabled()
+        self.ui.disable()
+        self.ui.refresh()
         grabbing = self.input.grabbing
         self.ungrab_keyboard()
 
-        text = self.vis.input_dialog(msg)
+        text = self.ui.input_dialog(msg)
 
         if enabled:
-            self.vis.enable()
+            self.ui.enable()
         if grabbing:
             self.grab_keyboard()
 

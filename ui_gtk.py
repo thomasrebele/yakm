@@ -20,14 +20,14 @@ import cairo
 import common
 logger = common.logger(__name__)
 
-import draw as base
+import ui as base
 Action = base.Action
 
 class Rectangle(base.Rectangle):
     def region(self):
         return cairo.RectangleInt(x=int(self.x), y=int(self.y), width=int(self.w), height=int(self.h))
 
-    def draw(self, drawing):
+    def draw(self, ui):
         pass
 
 class Line(base.Line):
@@ -39,7 +39,7 @@ class Line(base.Line):
         return cairo.RectangleInt(x=int(self.x1), y=int(self.y1), width=w, height=h)
 
 
-    def draw(self, drawing):
+    def draw(self, ui):
         pass
 
 class Label(base.Label):
@@ -71,7 +71,7 @@ class Label(base.Label):
         self.lbl.modify_font(self.fd)
         self.lbl.modify_fg(Gtk.StateFlags.NORMAL,Gdk.color_parse("white"))
 
-    def size(self, drawing=None, changed=False):
+    def size(self, ui=None, changed=False):
         # workaround: calling get_layout too often causes a segmentation fault
         if hasattr(self, "width") and not changed:
             return self.width, self.height
@@ -90,12 +90,12 @@ class Label(base.Label):
         w,h = self.size()
         return cairo.RectangleInt(x=int(self.x-w/2), y=int(self.y-h/2), width=w, height=h)
 
-    def draw(self, drawing):
+    def draw(self, ui):
         self.init()
         w,h = self.size()
         w = max(w, 10)
         h = max(h, 10)
-        drawing.fix.put(self.lbl, self.x-w/2, self.y-h/2)
+        ui.fix.put(self.lbl, self.x-w/2, self.y-h/2)
 
 
 
@@ -115,15 +115,15 @@ class Zone(base.Zone):
         return r
 
 
-    def draw(self, drawing):
+    def draw(self, ui):
         pass
 
 class Window(Gtk.Window):
 
-    def __init__(self, drawing):
+    def __init__(self, ui):
         super(Window, self).__init__()
 
-        self.drawing = drawing
+        self.ui = ui
         self.click_box_width = 1
 
         self.screen = self.get_screen()
@@ -138,8 +138,8 @@ class Window(Gtk.Window):
         self.connect("motion_notify_event", self.on_mouse_move)
         self.connect("event", self.on_mouse_move)
 
-        self.drawing.fix = Gtk.Fixed()
-        self.add(self.drawing.fix)
+        self.ui.fix = Gtk.Fixed()
+        self.add(self.ui.fix)
 
 
         self.show_all()
@@ -161,7 +161,7 @@ class Window(Gtk.Window):
         w, h = self.get_size()
         region = cairo.Region(cairo.RectangleInt(width=0, height=0))
 
-        for i in list(self.drawing.actions.keys()):
+        for i in list(self.ui.actions.keys()):
             r = i.region()
             if r:
                 region.union(r)
@@ -173,12 +173,12 @@ class Window(Gtk.Window):
         return region
 
     def redraw(self):
-        for c in self.drawing.fix.get_children():
-            self.drawing.fix.remove(c)
+        for c in self.ui.fix.get_children():
+            self.ui.fix.remove(c)
 
-        acts = list(self.drawing.actions.keys())
+        acts = list(self.ui.actions.keys())
         for i in acts:
-            i.draw(self.drawing)
+            i.draw(self.ui)
 
         self.region = self.get_mask()
         self.shape_combine_region(self.region)
@@ -209,7 +209,7 @@ class Window(Gtk.Window):
 
 
 
-class Drawing(base.Drawing):
+class UserInterface(base.UserInterface):
     def __init__(self):
         super().__init__()
 
@@ -313,9 +313,7 @@ signal.signal(signal.SIGABRT, sigabrt_handler)
 logger.debug("registered SIGABRT handler")
 
 if __name__ == '__main__':
-    draw = Drawing()
-
-
-    draw.enable()
-    draw.draw(Rectangle(x=500))
+    ui = UserInterface()
+    ui.enable()
+    ui.draw(Rectangle(x=500))
 

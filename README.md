@@ -82,17 +82,17 @@ In that case, you have to specify it in the configuration file:
        "c": click(1),
     }
 
-Drawing
+User interface
 ---
 
 ### Gtk
-The Gtk drawing module uses a GTK window. 
+The Gtk user interface uses a GTK window. 
 The shape of the window is modified, so that it only covers those pixels that are used for drawing the lines or labels.
 This mimics the behavior of keynav (although keynav uses Xlib for this purpose). 
 This module still contains some bugs that might cause fatal crashes.
 
 ### Xlib (fallback)
-The Xlib drawing module directly draws on the screen.
+The Xlib user interface directly draws on the screen.
 Currently it uses the external command `xrefresh` to remove previously drawn lines.
 This causes a noticable flickering.
 

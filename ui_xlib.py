@@ -12,12 +12,12 @@ import Xlib as xlib
 import common
 logger = common.logger(__name__)
 
-import draw as base
+import ui as base
 Action = base.Action
 
 class Rectangle(base.Rectangle):
-    def draw(self, drawing):
-        drawing.window.rectangle(drawing.gc,
+    def draw(self, ui):
+        ui.window.rectangle(ui.gc,
             int(self.x),
             int(self.y),
             int(self.w),
@@ -25,8 +25,8 @@ class Rectangle(base.Rectangle):
         )
 
 class Line(base.Line):
-    def draw(self, drawing):
-        drawing.window.line(drawing.gc,
+    def draw(self, ui):
+        ui.window.line(ui.gc,
             # TODO: intersection with border
             max(0,int(self.x1)),
             max(0,int(self.y1)),
@@ -35,27 +35,27 @@ class Line(base.Line):
         )
 
 class Label(base.Label):
-    def size(self, drawing):
-        info = drawing.text_extents(drawing.gc, self.text)
+    def size(self, ui):
+        info = ui.text_extents(ui.gc, self.text)
         self.width = info["overall_width"] + 2 * self.padding
         self.height = info["font_ascent"] + info["font_descent"] + 2 * self.padding
         self.shift_y = info["font_ascent"]
         return (self.width, self.height)
 
-    def draw(self, drawing):
-        self.size(drawing)
+    def draw(self, ui):
+        self.size(ui)
         # coordinates are bottom left corner of text
         left = self.x - self.anchor_x * self.width
         top = self.y - self.anchor_y * self.height
 
-        drawing.window.fill_rectangle(drawing.fill_gc,
+        ui.window.fill_rectangle(ui.fill_gc,
             int(left),
             int(top),
             int(self.width),
             int(self.height)
         )
 
-        drawing.window.draw_text(drawing.gc,
+        ui.window.draw_text(ui.gc,
                 int(left + self.padding),
                 int(top + self.shift_y + self.padding),
                 self.text.encode()
@@ -64,15 +64,15 @@ class Label(base.Label):
 
 
 class Zone(base.Zone):
-    def draw(self, drawing):
-        drawing.window.rectangle(drawing.gc,
+    def draw(self, ui):
+        ui.window.rectangle(ui.gc,
             int(self.x-self.w/2),
             int(self.y-self.h/2),
             int(self.w),
             int(self.h)
         )
 
-class Drawing(base.Drawing):
+class UserInterface(base.UserInterface):
     def __init__(self):
         self.d = display.Display()
         font = self.d.open_font("-adobe-helvetica-*-r-normal-*-25-*-*-*-*-*-*-*")
@@ -173,7 +173,7 @@ try:
         msg = str(msg) + "\n\n<Enter>  --->  OK\n<Escape>  --->  cancel"
         return tkinter.simpledialog.askstring("yakm", msg)
 
-    Drawing.input_dialog = input_dialog
+    UserInterface.input_dialog = input_dialog
 
 except Exception as exception:
     print(exception)
@@ -181,9 +181,7 @@ except Exception as exception:
 
 
 if __name__ == '__main__':
-    draw = Drawing()
-    print(draw.mouse_coords())
-
-    draw.enable()
-    draw.draw(Rectangle(x=500))
+    ui = UserInterface()
+    ui.enable()
+    ui.draw(Rectangle(x=500))
 
