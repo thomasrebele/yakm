@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+
+# All Gtk commands are executed by a single thread.
+# This avoids [xcb] Unknown request in queue while dequeuing gtk
+
+
 import traceback
 import threading
+import queue
 from time import sleep
 from subprocess import call
 
@@ -252,6 +258,50 @@ class Drawing(base.Drawing):
 
     def screen_height(self):
         return self.window.screen.get_height()
+
+
+    def input_dialog(self, msg=""):
+        # input dialog must be executed in Gtk thread
+        result_queue = queue.Queue(1)
+        GLib.idle_add(lambda: self._input_dialog(result_queue, msg))
+
+        result = result_queue.get()
+        print("input dialog returned " + str(result))
+        return result
+
+
+
+    def _input_dialog(self, result_queue, msg=""):
+        """Show an input dialog using the GTK library"""
+        msg = str(msg) + "\n\n<Enter>  --->  OK\n<Escape>  --->  cancel"
+
+        dialog = Gtk.MessageDialog(self.window,
+                              Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                              Gtk.MessageType.QUESTION,
+                              Gtk.ButtonsType.OK_CANCEL,
+                              msg)
+        dialog.set_title("yakm")
+
+        content = dialog.get_content_area()
+        entry = Gtk.Entry()
+        entry.set_size_request(550,0)
+        content.pack_end(entry, False, False, 0)
+
+        entry.connect("activate", lambda widget: dialog.response(Gtk.ResponseType.OK))
+        dialog.set_default_response(Gtk.ResponseType.OK)
+
+        dialog.show_all()
+        response = dialog.run()
+        text = entry.get_text()
+        dialog.destroy()
+        if (response == Gtk.ResponseType.OK):
+            result_queue.put(text)
+        else:
+            result_queue.put(None)
+
+
+
+
 
 import signal
 

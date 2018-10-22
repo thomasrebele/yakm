@@ -162,6 +162,23 @@ class Drawing(base.Drawing):
         return self.window.get_geometry().height
 
 
+try:
+    import tkinter
+    import tkinter.simpledialog
+
+    def input_dialog(self, msg=""):
+        """Show an input dialog using the TK library"""
+
+        tkinter.Tk().withdraw()
+        msg = str(msg) + "\n\n<Enter>  --->  OK\n<Escape>  --->  cancel"
+        return tkinter.simpledialog.askstring("yakm", msg)
+
+    Drawing.input_dialog = input_dialog
+
+except Exception as exception:
+    print(exception)
+    print("WARNING: input_dialog not available")
+
 
 if __name__ == '__main__':
     draw = Drawing()

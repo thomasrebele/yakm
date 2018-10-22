@@ -12,8 +12,10 @@ Installation
 
 Dependencies:
 * python3
-* python3-xlib: `pip3 install python-xlib`
-* python3-tk (only for the mark mode)
+* GTK3 libraries for python (`python3-gi`, `gir1.2-gtk-3.0`)
+
+Alternatively you can use the Xlib fallback mode:
+* python3-xlib: `pip3 install python-xlib` and python3-tk (only for the mark mode)
 
 
 Configuration
@@ -21,13 +23,21 @@ Configuration
 An example configuration file for the QWERTY keyboard layout can be found in `example_qwerty.conf`.
 Another example configuration is provided for the [Neo](http://neo-layout.org/) keyboard layout with the file `example_neo.conf`.
 
+Starting
+---
+
+To start Yakm, execute `python3 yakm.py`.
+The following keyboard shortcuts are for the example configuration (QWERTY layout).
+Press <kbd>Win</kbd>+<kbd>F</kbd> to activate the grid mode described below. 
+
 
 Modes
 ---
 
 **Default mode:**
 A red rectangle shows the current zone. 
-It can be moved around and made smaller or larger.
+It can be moved around with <kbd>A</kbd>, <kbd>S</kbd>, <kbd>D</kbd>, and <kbd>F</kbd>.
+Press <kbd>J</kbd>, <kbd>K</kbd>, and <kbd>L</kbd> for left, middle, and right click respectively.
 
 **Grid mode:**
 The zone is divided into rows and columns.
@@ -81,7 +91,7 @@ The shape of the window is modified, so that it only covers those pixels that ar
 This mimics the behavior of keynav (although keynav uses Xlib for this purpose). 
 This module still contains some bugs that might cause fatal crashes.
 
-### Xlib (deprecated)
+### Xlib (fallback)
 The Xlib drawing module directly draws on the screen.
 Currently it uses the external command `xrefresh` to remove previously drawn lines.
 This causes a noticable flickering.
@@ -94,6 +104,6 @@ Caveats
 * Drag and drop does not work in some programs (e.g., Zotero)
 * Key bindings are not updated when user executes a setxkbmap command
 * YAKM does not react to 'xdotool key Left' in grid mode
-* Programs started with 'sh' close after stopping YAKM
+* Programs started with 'sh' terminate after stopping YAKM
 * Some commands of keynav are not yet implemented (e.g., grid-nav off/toggle, record, cut-\*, ...)
 

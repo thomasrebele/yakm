@@ -20,26 +20,20 @@ import pathlib
 import os.path
 from collections import defaultdict
 
-import draw_gtk as draw
-#import draw_xlib as draw
+try:
+    import draw_gtk as draw
+except Exception as exception:
+    print(exception)
+    print("WARNING: GTK not available, trying Xlib user interface")
+
+    import draw_xlib as draw
+
 import input_devices
 from common import *
 logger = logger("yakm")
 
 
-try:
-    import tkinter
-    import tkinter.simpledialog
 
-    def input_dialog(msg=""):
-        """Show an input dialog using the TK library"""
-
-        tkinter.Tk().withdraw()
-        msg = str(msg) + "\n\n<Enter>  --->  OK\n<Escape>  --->  cancel"
-        return tkinter.simpledialog.askstring("yakm", msg)
-except Exception as exception:
-    print(exception)
-    print("WARNING: input_dialog not available")
 
 ################################################################################
 # commands
@@ -601,9 +595,9 @@ class MarkMode(Mode):
                            "leave empty for global mark" + "\n\n" +
                            str(win).lower()
                           )
-                    cond = nav.input_dialog(msg) or ""
+                    cond = nav.input_dialog(msg)
 
-                    if cond:
+                    if cond != None:
                         my_marks[cond][key] = (state.zone.x, state.zone.y)
 
                 register = annotate(register, "register '" + key + "'")
@@ -736,7 +730,7 @@ class KeyNavigator(Navigator):
         grabbing = self.input.grabbing
         self.ungrab_keyboard()
 
-        text = input_dialog(msg)
+        text = self.vis.input_dialog(msg)
 
         if enabled:
             self.vis.enable()
