@@ -364,8 +364,20 @@ class State:
         if self.mode:
             self.mode[-1].apply(self)
 
+        self.show_status()
+
         if undoable:
             self.nav.do_step(self)
+
+    def show_status(self):
+        label = ui.Label()
+        label.anchor_x = 0
+        label.anchor_y = 1
+        label.x = 0
+        label.y = self.screen.height()
+        label.text = " > ".join([str(m) for m in self.mode[1:]])
+        print(label.text)
+        self.nav.draw(label)
 
     def settings(self, inst, default=None):
         """Save settings for a mode based on its class name."""
@@ -458,6 +470,9 @@ class GridMode(Mode):
     - normal: pressing a key in grid_nav_chars first selects the row, then the column
     - dart: pressing a key in dart_nav_chars directly jumps to the corresponding cell
     """
+
+    def __str__(self):
+        return "grid"
 
     def get_bindings(self, state, bindings=None):
         new_bindings = {}
@@ -578,6 +593,9 @@ class MarkMode(Mode):
     - record: pressing a letter saves the current position
     - otherwise: pressing a letter moves the pointer to the saved position
     """
+
+    def __str__(self):
+        return "mark"
 
     def __init__(self, nav, conf, record=False):
         self.nav = nav
