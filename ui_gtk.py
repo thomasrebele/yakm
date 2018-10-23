@@ -88,14 +88,20 @@ class Label(base.Label):
 
     def region(self):
         w,h = self.size()
-        return cairo.RectangleInt(x=int(self.x-w/2), y=int(self.y-h/2), width=w, height=h)
+        left, top = self._pos()
+        return cairo.RectangleInt(x=left, y=top, width=w, height=h)
+
+    def _pos(self):
+        w,h = self.size()
+        left = int(self.x - self.anchor_x * w)
+        top = int(self.y - self.anchor_y * h)
+        return left, top
+
 
     def draw(self, ui):
         self.init()
-        w,h = self.size()
-        w = max(w, 10)
-        h = max(h, 10)
-        ui.fix.put(self.lbl, self.x-w/2, self.y-h/2)
+        left, top = self._pos()
+        ui.fix.put(self.lbl, left, top)
 
 
 
