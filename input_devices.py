@@ -103,26 +103,29 @@ class Input:
         self.h = geo.height
 
     def handle_event(self, evt):
-        #print(evt)
         try:
             if evt.type == X.KeyPress:
                 key_code = evt.detail
                 mod = evt.state & ~(X.LockMask | X.Mod2Mask | X.Button1Mask | X.Button2Mask | X.Button3Mask | X.Button4Mask | X.Button5Mask) # todo
-                # pressed_key =  get_keysym(evt.detail)
-                # print("pressed " + pressed_key)
+                pressed_key =  get_keysym(evt.detail)
+                logger.debug("pressed " + str(pressed_key))
 
                 k = (key_code, mod)
                 if k in self.bindings:
                     self.action_queue.put(self.bindings[k].fn)
                 else:
-                    print("unbound key " + str(key_code))
+                    mod_desc = []
+                    for desc,mask in key_mods.items():
+                        if mod & mask == mask:
+                            mod_desc += [desc]
 
+                    logger.warn("unbound key with key code " + str(key_code) + " and mod mask " + str(mod) + " " + "+".join(mod_desc) )
 
             elif evt.type == X.KeyRelease:
-                #print("\nrelease: " + str(evt) + "\n")
                 pass
+
         except Exception as e:
-            print("yakm error: an exception occurred while handling a key event")
+            logger.error("an exception occurred while handling a key event")
             traceback.print_exc()
             self.ungrab_keyboard()
             for k in self.key_bindings():
@@ -148,6 +151,7 @@ class Input:
 
     def register_key(self, key, fn, _global=False):
         key_code, mod_mask = get_keycode(key)
+        logger.debug("register key " + str(key) + " with keycode " + str(key_code) + " and mod mask " + str(mod_mask))
         if _global:
             grab_key(key_code, mod_mask)
 
@@ -168,15 +172,15 @@ class Input:
             pass
 
     def grab_keyboard(self):
-        print("input: grabbing keyboard")
+        logger.debug("grabbing keyboard")
         self.grabbing = True
         root.grab_keyboard(True, X.GrabModeAsync, X.GrabModeAsync,X.CurrentTime)
 
     def ungrab_keyboard(self):
-        print("input: ungrabbing keyboard")
+        logger.debug("ungrabbing keyboard")
         self.grabbing = False
         disp.ungrab_keyboard(X.CurrentTime)
-        print("input: ungrabbing done")
+        logger.debug("ungrabbing done")
 
     def stop(self):
         if self.grabbing:
@@ -188,7 +192,7 @@ class Input:
         p = self.pointer()
         x = int(x-p.x)
         y = int(y-p.y)
-        print("moving mouse to " + str(x) + " " + str(y))
+        logger.debug("moving mouse to " + str(x) + " " + str(y))
         disp.warp_pointer(x, y)
 
     def pointer(self):

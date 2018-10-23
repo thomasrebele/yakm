@@ -248,6 +248,16 @@ with command_definitions(lambda: globals()):
 
         subprocess.call(["xdotool", "key", str(to_press)])
 
+    def record_macro(state):
+        """Record a sequence of commands as a macro"""
+
+        state.enter_mode(MacroMode(state.nav, configuration["bindings"], record=True))
+
+    def apply_macro(state):
+        """Replay a macro (a sequence of commands)"""
+
+        state.enter_mode(MacroMode(state.nav, configuration["bindings"], record=True))
+
 
 ################################################################################
 # behavior
@@ -411,8 +421,7 @@ class Mode:
                     nav.state.zone.x = pointer.x
                     nav.state.zone.y = pointer.y
 
-                for act in action:
-                    act(nav.state)
+                nav.execute_actions(action)
 
                 if not history_back in action:
                     nav.state.update()
@@ -681,6 +690,11 @@ class Navigator:
     def __del__(self):
         self.ui.stop()
 
+    def execute_actions(self, actions): # TODO: do we need to replace self by a different variable?
+        for act in actions:
+            act(self.state)
+
+
     def do_step(self, state):
         """Add the current step to the history"""
 
@@ -712,11 +726,8 @@ class KeyNavigator(Navigator):
         for key, action in configuration["bindings"].items():
             if start in action:
                 def _upd(self=self, action=action):
-
                     self.state.enter_mode(Mode(self, configuration["bindings"]))
-                    for act in action:
-                        act(self.state)
-
+                    self.execute_actions(action)
                     self.state.update()
 
                 self.input.register_key(key, _upd, _global=True)
