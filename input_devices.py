@@ -5,6 +5,7 @@ import traceback
 import threading
 from time import sleep
 import queue
+from os import _exit
 
 import Xlib
 from Xlib import X, display, XK
@@ -132,11 +133,17 @@ class Input:
                 self.unregister_key(k)
 
     def action_loop(self):
-        while self.active:
-            sleep(0.01)
-            if not self.action_queue.empty():
-                item = self.action_queue.get()
-                item()
+        try:
+            while self.active:
+                sleep(0.01)
+                if not self.action_queue.empty():
+                    item = self.action_queue.get()
+                    item()
+        except Exception as ex:
+            self.stop()
+            logger.error("an exception occurred while executing an action")
+            traceback.print_exc()
+            _exit(1)
 
     def event_loop(self):
         while self.active:
