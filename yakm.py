@@ -774,9 +774,9 @@ class KeyNavigator(Navigator):
 
 
 if __name__ == '__main__':
-
     # check whether another instance is already running (https://stackoverflow.com/a/384493/1562506)
-    pid_file = '/tmp/yakm.pid'
+    display = os.environ['DISPLAY']
+    pid_file = '/tmp/yakm-{}-{}.pid'.format(os.getuid(), display)
     fp = open(pid_file, 'w')
     try:
         fcntl.lockf(fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
