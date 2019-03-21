@@ -14,7 +14,7 @@ from Xlib.ext.xtest import fake_input
 import common
 from common import Coord
 logger = common.logger(__name__)
-
+logger.setLevel(common.logging.WARNING)
 
 key_mods = {
     "shift": X.ShiftMask,
