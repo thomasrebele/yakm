@@ -15,7 +15,6 @@ import fcntl
 from sys import exit
 import subprocess
 import os
-import traceback
 
 import pathlib
 import os.path
@@ -253,11 +252,12 @@ with command_definitions(lambda: globals()):
         """Record a sequence of commands as a macro"""
 
         state.mode = [MacroMode(state.nav, configuration["bindings"], record=True)] + state.mode
+        state.mode[-1].update_bindings(state)
 
     def apply_macro(state):
         """Replay a macro (a sequence of commands)"""
 
-        state.enter_mode(MacroMode(state.nav, configuration["bindings"], record=False))
+        state.enter_mode(MacroMode(state.nav, configuration["bindings"], record=True))
 
 
 ################################################################################
@@ -356,10 +356,25 @@ class State:
             self.nav.ungrab_keyboard()
 
     def get_current_bindings(self):
-        bindings = {}
+        # first, get all keys that might have a binding
+        possbile_bindings = {}
         for mode in self.mode:
-            bindings = mode.get_bindings(self, bindings)
+            possbile_bindings = mode.get_bindings(self, possbile_bindings)
 
+        # check, whether they actually have an action
+        bindings = {}
+        for key, action in possbile_bindings.items():
+            if action:
+                act = None
+                for mode in reversed(self.mode):
+                    act = mode.get_action(self, key, act)
+
+                if act == None:
+                    continue
+
+                bindings[key] = act
+
+        logger.debug("current bindings: " + str(bindings.keys()))
         return bindings
 
     def update(self, undoable=True):
@@ -412,6 +427,25 @@ class Mode:
         """Draw visualization of this mode on the screen"""
 
         state.nav.draw(state.zone)
+
+    def get_action(self, _state, key, sub_action=None):
+        """Get the action for this key.
+        If the submode provides an action, returns the action of the submode."""
+
+        if sub_action:
+            logger.debug("returning sub action " + get_cmd(sub_action) + " for mode " + str(self))
+            return sub_action
+
+        if _state.mode and _state.mode[-1] == self:
+            bindings = self.get_bindings(_state)
+            logger.debug("keys: " + str(bindings.keys()))
+            if key in bindings:
+                return bindings[key]
+
+
+        logger.debug("no action found for " + key)
+
+        return None
 
     def get_bindings(self, _state, bindings=None):
         """Calculate the mapping from a key to an action for this mode.
@@ -718,15 +752,12 @@ class MacroMode(Mode):
 
         super().__init__(nav, conf)
 
+
     def __str__(self):
         return "macro"
 
-    def get_bindings(self, _state, bindings=None):
-        if self.is_recording(_state):
-            bindings={}
-            return bindings
-
-        return bindings
+    def get_action(self, _state, key, sub_action=None):
+        return None
 
     def is_recording(self, state):
         for m in state.mode:
@@ -749,6 +780,7 @@ class MacroMode(Mode):
             result.update(bindings)
         logger.debug(result)
         return result
+
 
     def apply(self, state):
         # draw grid
@@ -793,6 +825,7 @@ class MacroMode(Mode):
 
         with open(conf_dir + "macros", "w") as macros_file:
             macros_file.write(json.dumps(self.macros(), indent=4, sort_keys=True))
+
 
 
 
