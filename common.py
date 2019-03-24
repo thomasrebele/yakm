@@ -46,7 +46,7 @@ def get_cmd(value):
 
     if isinstance(value, list):
         cmds = [get_cmd(fn) for fn in value]
-        return ", ".join(cmds)
+        return "[ " +  ", ".join(cmds) + " ]"
 
     return None
 
@@ -95,7 +95,7 @@ def command_definitions(globals):
                 if len(args) != n:
                     _logger.error("wrong number of parameters for command %s expected %d, got %d", name, n, len(args))
 
-                return annotate(lambda state: fn(*args, state), name + " " + ",".join([str(a) for a in args]))
+                return annotate(lambda state: fn(*args, state), name + "(" + ",".join([str(a) for a in args]) + ")")
 
             fn = wrap
 

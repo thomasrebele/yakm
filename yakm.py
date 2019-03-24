@@ -252,7 +252,7 @@ with command_definitions(lambda: globals()):
         """Record a sequence of commands as a macro"""
 
         state.mode = [MacroMode(state.nav, configuration["bindings"], record=True)] + state.mode
-        state.mode[-1].update_bindings(state)
+        state.update_bindings()
 
     def apply_macro(state):
         """Replay a macro (a sequence of commands)"""
@@ -375,7 +375,35 @@ class State:
                 bindings[key] = act
 
         logger.debug("current bindings: " + str(bindings.keys()))
+        info(self)
         return bindings
+
+    def update_bindings(self):
+        """Activate the key bindings of this mode"""
+
+        bindings = self.get_current_bindings()
+
+        for key, action in bindings.items():
+            # use state of navigation, so that we can undo actions
+            def _upd(action=action, nav=self.nav):
+                """wrap action in a lambda function"""
+
+                # update zone if user has moved the cursor
+                pointer = nav.pointer()
+                if nav.prev_pointer != pointer:
+                    nav.state.zone.x = pointer.x
+                    nav.state.zone.y = pointer.y
+
+                nav.execute_actions(action)
+
+                if not history_back in action:
+                    nav.state.update()
+
+                # store cursor positions after our actions
+                nav.prev_pointer = nav.pointer()
+
+            _upd = annotate(_upd, get_cmd(action))
+            self.nav.input.register_key(key, _upd)
 
     def update(self, undoable=True):
         """Update the user interface and set the right mode"""
@@ -433,17 +461,12 @@ class Mode:
         If the submode provides an action, returns the action of the submode."""
 
         if sub_action:
-            logger.debug("returning sub action " + get_cmd(sub_action) + " for mode " + str(self))
             return sub_action
 
-        if _state.mode and _state.mode[-1] == self:
-            bindings = self.get_bindings(_state)
-            logger.debug("keys: " + str(bindings.keys()))
-            if key in bindings:
-                return bindings[key]
-
-
-        logger.debug("no action found for " + key)
+        bindings = self.get_bindings(_state)
+        logger.trace("keys: " + str(bindings.keys()))
+        if key in bindings:
+            return bindings[key]
 
         return None
 
@@ -459,37 +482,12 @@ class Mode:
         bindings.update(self.conf)
         return bindings
 
-    def update_bindings(self, state):
-        """Activate the key bindings of this mode"""
 
-        bindings = state.get_current_bindings()
-
-        for key, action in bindings.items():
-            # use state of navigation, so that we can undo actions
-            def _upd(action=action, nav=state.nav):
-                """wrap action in a lambda function"""
-
-                # update zone if user has moved the cursor
-                pointer = nav.pointer()
-                if nav.prev_pointer != pointer:
-                    nav.state.zone.x = pointer.x
-                    nav.state.zone.y = pointer.y
-
-                nav.execute_actions(action)
-
-                if not history_back in action:
-                    nav.state.update()
-
-                # store cursor positions after our actions
-                nav.prev_pointer = nav.pointer()
-
-            _upd = annotate(_upd, get_cmd(action))
-            state.nav.input.register_key(key, _upd)
 
     def enter(self, state):
         """This method is called when the user activates this mode"""
 
-        self.update_bindings(state)
+        state.update_bindings()
         state.nav.draw(state.zone)
 
     def exit(self, state):
@@ -549,7 +547,7 @@ class GridMode(Mode):
             return
 
         state.nav.ui.disable()
-        self.update_bindings(state)
+        state.update_bindings()
 
         # draw horizontal lines
         for grid_row, first_y, last_y in iter_first_last(range(state.grid.h+1)):
@@ -731,12 +729,13 @@ class MacroMode(Mode):
         self.nav = nav
         # if we are currently recording a macro, current key is the key of the macro
         self.current_key = None
-        my_macros = self.macros()
+        self.my_macros = self.macros()
+        self.cmd_sequence = []
 
-        if not my_macros:
+        if not self.my_macros:
             try:
                 with open(conf_dir + "macros", "r") as macros_file:
-                    my_macros.update(json.loads(macros_file.read()))
+                    self.my_macros.update(json.loads(macros_file.read()))
             except FileNotFoundError:
                 pass
 
@@ -757,13 +756,29 @@ class MacroMode(Mode):
         return "macro"
 
     def get_action(self, _state, key, sub_action=None):
+        #logger.debug("is recording: " + str(self.is_recording(_state)))
+        #logger.debug("sub action: " + str(sub_action))
+        if self.is_recording(_state):
+            if sub_action:
+                def register(state, key=key):
+                    """register a mark for the current pointer position"""
+                    state.nav.execute_actions(sub_action)
+                    self.cmd_sequence += [get_cmd(sub_action)]
+
+                register = annotate(register, "MACRO" + get_cmd(sub_action))
+                return [register]
+
+
+        return sub_action
+
+    def get_instance(self, state):
+        for m in state.mode:
+            if type(m) == MacroMode:
+                return m
         return None
 
     def is_recording(self, state):
-        for m in state.mode:
-            if type(m) == MacroMode:
-                return True
-        return False
+        return self.get_instance(state) is not None
 
     def macros(self):
         """mapping from condition -> key -> action"""
@@ -808,16 +823,18 @@ class MacroMode(Mode):
             state.nav.ui.enable()
 
     def finish_recording(self):
+        print(self.cmd_sequence)
+
         win = self.nav.input.window()
-        msg = ("enter a filter for macro " + str(key) + "\n" +
+        msg = ("enter a filter for macro " + str(self.cmd_sequence) + "\n" +
                "leave empty for global macro" + "\n\n" +
                str(win).lower()
               )
-        cond = nav.input_dialog(msg)
+        cond = self.nav.input_dialog(msg)
 
         if cond != None:
-            #my_macros[cond][key] = (state.zone.x, state.zone.y)
-            pass
+            self.my_macros[cond]["a"] = self.get_instance(self.nav.state).cmd_sequence
+            self.save(self.nav.state)
 
 
     def save(self, _state):
