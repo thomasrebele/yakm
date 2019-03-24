@@ -252,7 +252,7 @@ with command_definitions(lambda: globals()):
     def record_macro(state):
         """Record a sequence of commands as a macro"""
 
-        state.enter_mode(MacroMode(state.nav, configuration["bindings"], record=True))
+        state.mode = [MacroMode(state.nav, configuration["bindings"], record=True)] + state.mode
 
     def apply_macro(state):
         """Replay a macro (a sequence of commands)"""
@@ -359,6 +359,7 @@ class State:
         bindings = {}
         for mode in self.mode:
             bindings = mode.get_bindings(self, bindings)
+
         return bindings
 
     def update(self, undoable=True):
@@ -378,7 +379,8 @@ class State:
         label.anchor_y = 1
         label.x = 0
         label.y = self.screen.height()
-        label.text = " > ".join([str(m) for m in self.mode[1:]])
+
+        label.text = " > ".join([str(m) for m in self.mode])
         print(label.text)
         self.nav.draw(label)
 
@@ -402,6 +404,9 @@ class Mode:
     def __init__(self, nav, conf):
         self.nav = nav
         self.conf = conf
+
+    def __str__(self):
+        return "base"
 
     def apply(self, state):
         """Draw visualization of this mode on the screen"""
@@ -684,109 +689,110 @@ class MarkMode(Mode):
         with open(conf_dir + "marks", "w") as marks_file:
             marks_file.write(json.dumps(self.marks(), indent=4, sort_keys=True))
 
-#class MacroMode(Mode):
-#    """
-#    """
-#
-#    def __str__(self):
-#        return "macro"
-#
-#    def __init__(self, nav, conf, record=False):
-#        self.nav = nav
-#        # if we are currently recording a macro, current key is the key of the macro
-#        self.current_key = None
-#        my_macros = self.macros()
-#
-#        if not my_macros:
-#            try:
-#                with open(conf_dir + "macros", "r") as macros_file:
-#                    my_macros.update(json.loads(macros_file.read()))
-#            except FileNotFoundError:
-#                pass
-#
-#        conf = {}
-#        if record:
-#            # if already recording: finish the previous macro and store it
-#            if [m for m in nav.state.mode if type(m) == MacroMode]:
-#                self.finish_recording()
-#            else:
-#                # currently only alphabetic macros
-#                for key in list(string.ascii_lowercase):
-#                    def register(state, key=key):
-#                        """register a mark for the current pointer position"""
-#
-#                        my_macros = self.macros()
-#                        print("enter mode")
-#                        state.enter_mode(GridMode(state.nav, configuration["bindings"]))
-#
-#                    register = annotate(register, "register '" + key + "'")
-#                    conf[key] = [register]
-#        else:
-#            for key, macro in self.bindings().items():
-#                conf[key] = [macro, exit_mode]
-#
-#        super().__init__(nav, conf)
-#
-#    def macros(self):
-#        """mapping from condition -> key -> action"""
-#        return self.nav.state.settings(self, defaultdict(lambda: dict()))
-#
-#    def bindings(self):
-#        """get mapping from key -> action"""
-#
-#        result = {}
-#        win = str(self.nav.input.window()).lower()
-#        for cond, bindings in self.macros().items():
-#            if not cond.lower() in str(win):
-#                continue
-#            result.update(bindings)
-#        logger.debug(result)
-#        return result
-#
-#    def apply(self, state):
-#        # draw grid
-#        state.nav.undraw()
-#        enabled = state.nav.ui.is_enabled()
-#        state.nav.ui.disable()
-#
-#        bindings = self.bindings()
-#
-#        if not bindings:
-#            label = ui.Label()
-#            label.x = state.screen.width() / 2
-#            label.y = state.screen.height() / 2
-#            label.text = "no macros"
-#            state.nav.draw(label)
-#
-#        for key, coord in bindings.items():
-#            label = ui.Label()
-#            label.x = coord[0]
-#            label.y = coord[1]
-#            label.text = "@" + key
-#            state.nav.draw(label)
-#
-#        if enabled:
-#            state.nav.ui.enable()
-#
-#    def finish_recording(self):
-#        win = self.nav.input.window()
-#        msg = ("enter a filter for macro " + str(key) + "\n" +
-#               "leave empty for global macro" + "\n\n" +
-#               str(win).lower()
-#              )
-#        cond = nav.input_dialog(msg)
-#
-#        if cond != None:
-#            #my_macros[cond][key] = (state.zone.x, state.zone.y)
-#            pass
-#
-#
-#    def save(self, _state):
-#        """save the current macros in a file in the config dir"""
-#
-#        with open(conf_dir + "macros", "w") as macros_file:
-#            macros_file.write(json.dumps(self.macros(), indent=4, sort_keys=True))
-#
+class MacroMode(Mode):
+    """
+    """
+
+    def __init__(self, nav, conf, record=False):
+        self.nav = nav
+        # if we are currently recording a macro, current key is the key of the macro
+        self.current_key = None
+        my_macros = self.macros()
+
+        if not my_macros:
+            try:
+                with open(conf_dir + "macros", "r") as macros_file:
+                    my_macros.update(json.loads(macros_file.read()))
+            except FileNotFoundError:
+                pass
+
+        conf = {}
+        if record:
+            # if already recording: finish the previous macro and store it
+            if self.is_recording(nav.state):
+                self.finish_recording()
+
+        else:
+            for key, macro in self.bindings().items():
+                conf[key] = [macro, exit_mode]
+
+        super().__init__(nav, conf)
+
+    def __str__(self):
+        return "macro"
+
+    def get_bindings(self, _state, bindings=None):
+        if self.is_recording(_state):
+            bindings={}
+            return bindings
+
+        return bindings
+
+    def is_recording(self, state):
+        for m in state.mode:
+            if type(m) == MacroMode:
+                return True
+        return False
+
+    def macros(self):
+        """mapping from condition -> key -> action"""
+        return self.nav.state.settings(self, defaultdict(lambda: dict()))
+
+    def bindings(self):
+        """get mapping from key -> action"""
+
+        result = {}
+        win = str(self.nav.input.window()).lower()
+        for cond, bindings in self.macros().items():
+            if not cond.lower() in str(win):
+                continue
+            result.update(bindings)
+        logger.debug(result)
+        return result
+
+    def apply(self, state):
+        # draw grid
+        state.nav.undraw()
+        enabled = state.nav.ui.is_enabled()
+        state.nav.ui.disable()
+
+        bindings = self.bindings()
+
+        if not bindings:
+            label = ui.Label()
+            label.x = state.screen.width() / 2
+            label.y = state.screen.height() / 2
+            label.text = "no macros"
+            state.nav.draw(label)
+
+        for key, coord in bindings.items():
+            label = ui.Label()
+            label.x = coord[0]
+            label.y = coord[1]
+            label.text = "@" + key
+            state.nav.draw(label)
+
+        if enabled:
+            state.nav.ui.enable()
+
+    def finish_recording(self):
+        win = self.nav.input.window()
+        msg = ("enter a filter for macro " + str(key) + "\n" +
+               "leave empty for global macro" + "\n\n" +
+               str(win).lower()
+              )
+        cond = nav.input_dialog(msg)
+
+        if cond != None:
+            #my_macros[cond][key] = (state.zone.x, state.zone.y)
+            pass
+
+
+    def save(self, _state):
+        """save the current macros in a file in the config dir"""
+
+        with open(conf_dir + "macros", "w") as macros_file:
+            macros_file.write(json.dumps(self.macros(), indent=4, sort_keys=True))
 
 
 
