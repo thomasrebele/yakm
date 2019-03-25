@@ -731,6 +731,9 @@ class MacroMode(Mode):
         self.current_key = None
         self.my_macros = self.macros()
         self.cmd_sequence = []
+        self.pos = Coord(0,0)
+        self.POS = "position"
+        self.CMD = "command"
 
         if not self.my_macros:
             try:
@@ -744,6 +747,8 @@ class MacroMode(Mode):
             # if already recording: finish the previous macro and store it
             if self.is_recording(nav.state):
                 self.finish_recording()
+            else:
+                self.pos = nav.pointer()
 
         else:
             for key, macro in self.bindings().items():
@@ -756,8 +761,6 @@ class MacroMode(Mode):
         return "macro"
 
     def get_action(self, _state, key, sub_action=None):
-        #logger.debug("is recording: " + str(self.is_recording(_state)))
-        #logger.debug("sub action: " + str(sub_action))
         if self.is_recording(_state):
             if sub_action:
                 def register(state, key=key):
@@ -765,11 +768,35 @@ class MacroMode(Mode):
                     state.nav.execute_actions(sub_action)
                     self.cmd_sequence += [get_cmd(sub_action)]
 
-                register = annotate(register, "MACRO" + get_cmd(sub_action))
+                register = annotate(register, get_cmd(sub_action))
                 return [register]
 
+        if sub_action:
+            return sub_action
 
-        return sub_action
+        print(self.get_bindings(_state))
+        macro = self.get_bindings(_state).get(key)
+        if not macro:
+            return None
+
+        print("MARCO ACTION FOR " + str(key))
+
+        def macro_action(state, key=key, cmd=macro[self.CMD], pos=macro[self.POS]):
+            move_to(pos[0], pos[1])
+            #state.nav.execute_actions(macro)
+
+        macro_action = annotate(macro_action, get_cmd(sub_action))
+        return [macro_action]
+
+    def get_bindings(self, _state, bindings=None):
+        if self.is_recording(_state):
+            return super().get_bindings(_state, bindings)
+
+        bindings = {}
+        for key, macro in self.bindings():
+            bindings[key] = macro[self.CMD]
+        return bindings
+
 
     def get_instance(self, state):
         for m in state.mode:
@@ -781,11 +808,11 @@ class MacroMode(Mode):
         return self.get_instance(state) is not None
 
     def macros(self):
-        """mapping from condition -> key -> action"""
+        """mapping from condition -> key -> macro"""
         return self.nav.state.settings(self, defaultdict(lambda: dict()))
 
     def bindings(self):
-        """get mapping from key -> action"""
+        """get mapping from key -> macro"""
 
         result = {}
         win = str(self.nav.input.window()).lower()
@@ -812,7 +839,8 @@ class MacroMode(Mode):
             label.text = "no macros"
             state.nav.draw(label)
 
-        for key, coord in bindings.items():
+        for key, macro in bindings.items():
+            coord = macro[self.POS]
             label = ui.Label()
             label.x = coord[0]
             label.y = coord[1]
@@ -833,7 +861,12 @@ class MacroMode(Mode):
         cond = self.nav.input_dialog(msg)
 
         if cond != None:
-            self.my_macros[cond]["a"] = self.get_instance(self.nav.state).cmd_sequence
+            # TODO: let user chose macro key
+            recorded = self.get_instance(self.nav.state)
+            self.my_macros[cond]["a"] = {
+                    self.POS: [recorded.pos.x, recorded.pos.y],
+                    self.CMD: recorded.cmd_sequence,
+                }
             self.save(self.nav.state)
 
 

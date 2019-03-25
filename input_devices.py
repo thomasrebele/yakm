@@ -54,7 +54,8 @@ def get_keycode(key):
             key = p
 
     key_sym = XK.string_to_keysym(keys_to_code.get(key, key))
-    return disp.keysym_to_keycode(key_sym), mod
+    key_code = disp.keysym_to_keycode(key_sym)
+    return key_code, mod
 
 def get_keysym(key_code):
     key_sym = disp.keycode_to_keysym(key_code, 0)
