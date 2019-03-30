@@ -15,6 +15,7 @@ import fcntl
 from sys import exit
 import subprocess
 import os
+import time
 
 import pathlib
 import os.path
@@ -77,6 +78,9 @@ with command_definitions(lambda: globals()):
             subprocess.Popen(command, shell=True, close_fds=True)
             os._exit(0)
         print("done")
+
+    def sleep(millis, state):
+        time.sleep(millis / 1000.)
 
     def info(state):
         """Write information about the current state to stdout"""
@@ -257,7 +261,7 @@ with command_definitions(lambda: globals()):
     def apply_macro(state):
         """Replay a macro (a sequence of commands)"""
 
-        state.enter_mode(MacroMode(state.nav, configuration["bindings"], record=True))
+        state.enter_mode(MacroMode(state.nav, configuration["bindings"], record=False))
 
 
 ################################################################################
@@ -424,7 +428,6 @@ class State:
         label.y = self.screen.height()
 
         label.text = " > ".join([str(m) for m in self.mode])
-        print(label.text)
         self.nav.draw(label)
 
     def settings(self, inst, default=None):
@@ -734,6 +737,7 @@ class MacroMode(Mode):
         self.pos = Coord(0,0)
         self.POS = "position"
         self.CMD = "command"
+        self.recording = record
 
         if not self.my_macros:
             try:
@@ -774,27 +778,24 @@ class MacroMode(Mode):
         if sub_action:
             return sub_action
 
-        print(self.get_bindings(_state))
         macro = self.get_bindings(_state).get(key)
         if not macro:
             return None
 
-        print("MARCO ACTION FOR " + str(key))
-
-        def macro_action(state, key=key, cmd=macro[self.CMD], pos=macro[self.POS]):
-            move_to(pos[0], pos[1])
-            #state.nav.execute_actions(macro)
-
-        macro_action = annotate(macro_action, get_cmd(sub_action))
-        return [macro_action]
+        return macro
 
     def get_bindings(self, _state, bindings=None):
         if self.is_recording(_state):
             return super().get_bindings(_state, bindings)
 
         bindings = {}
-        for key, macro in self.bindings():
-            bindings[key] = macro[self.CMD]
+        for key, macro in self.bindings().items():
+            x = macro[self.POS][0]
+            y = macro[self.POS][1]
+            cmd = "[" + ",sleep(500),".join(macro[self.CMD]) + "]"
+            r = exec_yakm(cmd, {}, use_eval=True)
+            macro_action = [[move_to(x,y), warp]] + r
+            bindings[key] = macro_action
         return bindings
 
 
@@ -805,7 +806,10 @@ class MacroMode(Mode):
         return None
 
     def is_recording(self, state):
-        return self.get_instance(state) is not None
+        inst = self.get_instance(state)
+        if inst is None:
+            return False
+        return inst.recording
 
     def macros(self):
         """mapping from condition -> key -> macro"""
@@ -851,8 +855,6 @@ class MacroMode(Mode):
             state.nav.ui.enable()
 
     def finish_recording(self):
-        print(self.cmd_sequence)
-
         win = self.nav.input.window()
         msg = ("enter a filter for macro " + str(self.cmd_sequence) + "\n" +
                "leave empty for global macro" + "\n\n" +
@@ -907,7 +909,10 @@ class Navigator:
 
     def execute_actions(self, actions): # TODO: do we need to replace self by a different variable?
         for act in actions:
-            act(self.state)
+            if type(act) == list:
+                self.execute_actions(act)
+            else:
+                act(self.state)
 
 
     def do_step(self, state):
@@ -965,9 +970,18 @@ class KeyNavigator(Navigator):
 
         return text
 
+# we limit exec(...) to the above defined yakm commands
+exec_globals = {"__builtins__": None}
+_globals = globals()
+for i in commands:
+    exec_globals[i] = _globals[i]
 
-
-
+def exec_yakm(code, local_vars, use_eval=False):
+    # read configuration
+    if use_eval:
+        return eval(code, exec_globals, local_vars)
+    else:
+        exec(code, exec_globals, local_vars)
 
 
 if __name__ == '__main__':
@@ -1001,15 +1015,9 @@ if __name__ == '__main__':
 
     if os.path.isfile(conf_file):
         with open(conf_file, "r") as f_config:
-            # we limit exec(...) to the above defined yakm commands
-            exec_globals = {"__builtins__": None}
-            _globals = globals()
-            for i in commands:
-                exec_globals[i] = _globals[i]
-
-            # read configuration
             conf_str = f_config.read()
-            exec(conf_str, exec_globals, configuration)
+            exec_yakm(conf_str, configuration)
+
     else:
         print("WARNING: yakm could not open configuration file " + str(conf_file))
 

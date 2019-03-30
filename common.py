@@ -36,6 +36,10 @@ def annotate(function, cmd):
 
 def get_cmd(value):
     """Obtain the string representation of a command"""
+    if isinstance(value, list):
+        cmds = [str(get_cmd(fn)) for fn in value]
+        return "[ " +  ", ".join(cmds) + " ]"
+
     if callable(value):
         try:
             return value.cmd
@@ -43,10 +47,6 @@ def get_cmd(value):
             if not value.__name__:
                 return str(value)
             return value.__name__
-
-    if isinstance(value, list):
-        cmds = [get_cmd(fn) for fn in value]
-        return "[ " +  ", ".join(cmds) + " ]"
 
     return None
 
