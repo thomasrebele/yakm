@@ -160,57 +160,60 @@ with command_definitions(lambda: globals()):
 
     def grid(width, height, state):
         """Activate grid mode with a width x height cells"""
-        state.grid.w = width
-        state.grid.h = height
-        state.enter_mode(GridMode(state.nav, configuration["bindings"]))
+        grid_mode = GridMode(
+            state.nav,
+            configuration["bindings"],
+            width,
+            height)
+        state.enter_mode(grid_mode)
 
 
     def cell_select(col, row, state):
         """Set the zone to the cell with grid coordinates (col, row)"""
-        if col > state.grid.w or row > state.grid.h:
+        if col > grid_mode.grid.w or row > grid_mode.grid.h:
             return
 
-        left = state.zone.left() + col / state.grid.w  * state.zone.w
-        top = state.zone.top() + row / state.grid.h  * state.zone.h
+        left = state.zone.left() + col / grid_mode.grid.w  * state.zone.w
+        top = state.zone.top() + row / grid_mode.grid.h  * state.zone.h
 
-        state.zone.w = max(state.grid.w, state.zone.w / state.grid.w)
-        state.zone.h = max(state.grid.h, state.zone.h / state.grid.h)
+        state.zone.w = max(grid_mode.grid.w, state.zone.w / grid_mode.grid.w)
+        state.zone.h = max(grid_mode.grid.h, state.zone.h / grid_mode.grid.h)
         state.zone.x = left + state.zone.w/2
         state.zone.y = top + state.zone.h/2
 
     # grid navigation
     def grid_nav(state):
         """Start grid navigation, i.e., use grid_nav_chars for selecting rows"""
-
-        # switch to row selection mode
-        state.grid_nav = "row"
+        # TODO: remove ?
 
 
     def row_select(row, state):
         """Select the specified row and activate column selection"""
 
         logger.debug("selecting row " +str(row))
-        top = state.zone.top() + row / state.grid.h  * state.zone.h
-        state.zone.y = top + 0.5 * state.zone.h / state.grid.h
-        state.zone.h = max(state.grid.h, state.zone.h / state.grid.h)
+        grid_mode = state.mode[-1]
+        top = state.zone.top() + row / grid_mode.grid.h  * state.zone.h
+        state.zone.y = top + 0.5 * state.zone.h / grid_mode.grid.h
+        state.zone.h = max(grid_mode.grid.h, state.zone.h / grid_mode.grid.h)
 
         warp(state)
 
         # switch to col selection mode
-        state.grid_nav = "col"
+        grid_mode.grid_nav = "col"
 
 
     def col_select(col, state):
         """Select the specified col"""
 
         logger.debug("selecting col " +str(col))
-        left = state.zone.left() + col / state.grid.w  * state.zone.w
-        state.zone.x = left + 0.5 * state.zone.w / state.grid.w
-        state.zone.w = max(state.grid.w, state.zone.w / state.grid.w)
+        grid_mode = state.mode[-1]
+        left = state.zone.left() + col / grid_mode.grid.w  * state.zone.w
+        state.zone.x = left + 0.5 * state.zone.w / grid_mode.grid.w
+        state.zone.w = max(grid_mode.grid.w, state.zone.w / grid_mode.grid.w)
 
         warp(state)
 
-        state.grid_nav = None
+        grid_mode.grid_nav = None
         grid_nav(state)
 
 
@@ -224,7 +227,8 @@ with command_definitions(lambda: globals()):
         grid(grid_width, grid_height)(state)
 
         # switch to dart selection mode
-        state.grid_nav = "dart"
+        grid_mode = state.mode[-1]
+        grid_mode.grid_nav = "dart"
 
 
 
@@ -302,11 +306,7 @@ class State:
         # state
         self.mode = []
         self.zone = ui.Zone()
-        self.grid = Size()
-        self.grid.w = 1
-        self.grid.h = 1
         self.drag = False
-        self.grid_nav = None # or "row", or "col"
         self._settings = {} # settings for modes
 
     def __str__(self):
@@ -512,21 +512,28 @@ class GridMode(Mode):
     - dart: pressing a key in dart_nav_chars directly jumps to the corresponding cell
     """
 
+    def __init__(self, nav, conf, grid_width, grid_height):
+        self.grid = Size()
+        self.grid.w = grid_width
+        self.grid.h = grid_height
+        self.grid_nav = "row"
+
+
     def __str__(self):
         return "grid"
 
     def get_bindings(self, state, bindings=None):
         new_bindings = {}
-        if state.grid_nav == "row":
+        if self.grid_nav == "row":
             for row, key in enumerate(configuration["grid_nav_chars"]):
                 new_bindings[key] = [row_select(row)]
 
 
-        if state.grid_nav == "col":
+        if self.grid_nav == "col":
             for col, key in enumerate(configuration["grid_nav_chars"]):
                 new_bindings[key] = [col_select(col)]
 
-        if state.grid_nav == "dart":
+        if self.grid_nav == "dart":
             for grid_row, keyboard_row in enumerate(configuration["dart_nav_chars"]):
                 for grid_col, key in enumerate(keyboard_row):
                     # uggly hack
@@ -551,46 +558,46 @@ class GridMode(Mode):
         state.update_bindings()
 
         # draw horizontal lines
-        for grid_row, first_y, last_y in iter_first_last(range(state.grid.h+1)):
+        for grid_row, first_y, last_y in iter_first_last(range(self.grid.h+1)):
             # avoid drawing lines in grid if grid is very small
             horizontal_until_x = state.zone.right()
-            if state.zone.w < state.grid.w * 30 and not first_y and not last_y:
+            if state.zone.w < self.grid.w * 30 and not first_y and not last_y:
                 horizontal_until_x = state.zone.left() - 10
 
-            if first_y or last_y or state.grid_nav is None or \
-                    state.grid_nav == "row" or state.grid_nav == "dart":
+            if first_y or last_y or self.grid_nav is None or \
+                    self.grid_nav == "row" or self.grid_nav == "dart":
 
                 line = ui.Line()
                 line.x1 = state.zone.left()
                 line.x2 = horizontal_until_x
 
-                line.y1 = state.zone.top() + grid_row * state.zone.h / state.grid.h
+                line.y1 = state.zone.top() + grid_row * state.zone.h / self.grid.h
                 line.y2 = line.y1
                 state.nav.draw(line)
 
         # draw vertical lines
-        for grid_col, first_x, last_x in iter_first_last(range(state.grid.w+1)):
+        for grid_col, first_x, last_x in iter_first_last(range(self.grid.w+1)):
             # avoid drawing lines in grid if grid is very small
             vertical_until_y = state.zone.bottom()
-            if state.zone.h < state.grid.h * 30 and not first_x and not last_x:
+            if state.zone.h < self.grid.h * 30 and not first_x and not last_x:
                 vertical_until_y = state.zone.top() - 10
 
-            if first_x or last_x or state.grid_nav is None or \
-                    state.grid_nav == "col" or state.grid_nav == "dart":
+            if first_x or last_x or self.grid_nav is None or \
+                    self.grid_nav == "col" or self.grid_nav == "dart":
 
                 line = ui.Line()
-                line.x1 = state.zone.left() + grid_col * state.zone.w / state.grid.w
+                line.x1 = state.zone.left() + grid_col * state.zone.w / self.grid.w
                 line.x2 = line.x1
 
                 line.y1 = state.zone.top()
                 line.y2 = vertical_until_y
                 state.nav.draw(line)
 
-        if state.grid_nav == "row":
-            delta = state.zone.h / state.grid.h
-            for grid_row in range(state.grid.h):
+        if self.grid_nav == "row":
+            delta = state.zone.h / self.grid.h
+            for grid_row in range(self.grid.h):
                 label = ui.Label()
-                label.x = state.zone.left() + 0.5 * state.zone.w / state.grid.w
+                label.x = state.zone.left() + 0.5 * state.zone.w / self.grid.w
                 label.y = state.zone.top() + (grid_row + 0.5) * delta
                 label.text = str(configuration["grid_nav_chars"][grid_row])
 
@@ -598,26 +605,26 @@ class GridMode(Mode):
                     break
                 state.nav.draw(label)
 
-        if state.grid_nav == "col":
-            delta = state.zone.w / state.grid.w
-            for grid_col in range(state.grid.w):
+        if self.grid_nav == "col":
+            delta = state.zone.w / self.grid.w
+            for grid_col in range(self.grid.w):
                 label = ui.Label()
                 label.x = state.zone.left() + (grid_col + 0.5) * delta
-                label.y = state.zone.top() + 0.5 * state.zone.h / state.grid.h
+                label.y = state.zone.top() + 0.5 * state.zone.h / self.grid.h
                 label.text = str(configuration["grid_nav_chars"][grid_col])
 
                 if label.size(state.nav.ui)[0] > delta:
                     break
                 state.nav.draw(label)
 
-        if state.grid_nav == "dart":
-            delta_x = state.zone.w / state.grid.w
-            delta_y = state.zone.h / state.grid.h
+        if self.grid_nav == "dart":
+            delta_x = state.zone.w / self.grid.w
+            delta_y = state.zone.h / self.grid.h
             label = ui.Label()
             label.text = "Ig"
             if max(label.size(state.nav.ui)) < min(delta_x, delta_y):
-                for grid_col in range(state.grid.w):
-                    for grid_row in range(state.grid.h):
+                for grid_col in range(self.grid.w):
+                    for grid_row in range(self.grid.h):
                         label = ui.Label()
                         label.x = state.zone.left() + (grid_col + 0.5) * delta_x
                         label.y = state.zone.top() + (grid_row + 0.5) * delta_y
