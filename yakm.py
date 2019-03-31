@@ -685,6 +685,7 @@ class MarkMode(Mode):
 
         conf = {}
         if record:
+            # TODO use key select mode
             # currently only alphabetic marks
             for key in list(string.ascii_lowercase):
                 def register(state, key=key):
@@ -756,6 +757,41 @@ class MarkMode(Mode):
         with open(conf_dir + "marks", "w") as marks_file:
             marks_file.write(json.dumps(self.marks(), indent=4, sort_keys=True))
 
+
+class KeySelectMode(Mode):
+    """Asks the userto press a key"""
+
+    def __init__(self, nav, callback):
+        self.callback = callback
+        super().__init__(nav, {})
+
+    def __str__(self):
+        return "key"
+
+    def apply(self, state):
+        state.nav.ui.clear()
+
+        label = ui.Label()
+        label.x = state.screen.width() / 2
+        label.y = state.screen.height() / 2
+        label.text = " press a key "
+        state.nav.draw(label)
+
+        state.nav.ui.refresh()
+
+
+    def get_bindings(self, _state, bindings=None):
+        conf = {}
+        for key in list(string.ascii_lowercase):
+            def register(state, key=key):
+                self.callback(state, key)
+
+            register = annotate(register, "register '" + key + "'")
+            conf[key] = [exit_mode, register]
+        return conf
+
+
+
 class MacroMode(Mode):
     """
     """
@@ -792,7 +828,7 @@ class MacroMode(Mode):
             # if already recording: finish the previous macro and store it
             instance = self.get_instance(state)
             if instance:
-                instance.finish_recording()
+                instance.finish_recording(state)
             else:
                 state.mode = [self] + state.mode
                 self.pos = self.nav.pointer()
@@ -830,9 +866,10 @@ class MacroMode(Mode):
         for key, macro in self.bindings().items():
             x = macro[self.POS][0]
             y = macro[self.POS][1]
-            cmd = "[" + ",sleep(500),".join(macro[self.CMD]) + "]"
+            cmd = "[" + ",sleep(100),".join(macro[self.CMD]) + "]"
             r = exec_yakm(cmd, {}, use_eval=True)
             macro_action = [[move_to(x,y), warp]] + r
+            # TODO: ui refresh
             bindings[key] = macro_action
         return bindings
 
@@ -886,9 +923,9 @@ class MacroMode(Mode):
         if enabled:
             state.nav.ui.enable()
 
-    def finish_recording(self):
-        recorded = self.get_instance(self.nav.state)
-        self.nav.state.mode.remove(recorded)
+    def finish_recording(self, state):
+        recorded = self.get_instance(state)
+        state.mode.remove(recorded)
 
         win = self.nav.input.window()
         msg = ("enter a filter for macro " + str(self.cmd_sequence) + "\n" +
@@ -898,12 +935,14 @@ class MacroMode(Mode):
         cond = self.nav.input_dialog(msg)
 
         if cond != None:
-            # TODO: let user chose macro key
-            self.my_macros[cond]["a"] = {
-                    self.POS: [recorded.pos.x, recorded.pos.y],
-                    self.CMD: recorded.cmd_sequence,
-                }
-            self.save(self.nav.state)
+            def register_macro(state, key):
+                self.my_macros[cond][key] = {
+                        self.POS: [recorded.pos.x, recorded.pos.y],
+                        self.CMD: recorded.cmd_sequence,
+                    }
+                self.save(state)
+
+            state.enter_mode(KeySelectMode(state.nav, register_macro))
 
 
     def save(self, _state):

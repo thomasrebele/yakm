@@ -46,7 +46,7 @@ class Label(base.Label):
     lock = threading.RLock()
     layout_lbl = Gtk.Label()
     layout = layout_lbl.get_layout()
-    fd = Pango.FontDescription("Serif 20")
+    fd = Pango.FontDescription("Serif 17")
 
     def __init__(self):
         self.lbl = Gtk.Label()
@@ -88,8 +88,11 @@ class Label(base.Label):
 
     def region(self):
         w,h = self.size()
+        pad = self.padding
+        w += 2*pad
+        h += 2*pad
         left, top = self._pos()
-        return cairo.RectangleInt(x=left, y=top, width=w, height=h)
+        return cairo.RectangleInt(x=left-pad, y=top-pad, width=w+pad, height=h+pad)
 
     def _pos(self):
         w,h = self.size()
