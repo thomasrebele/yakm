@@ -661,6 +661,41 @@ class GridMode(Mode):
         state.nav.ui.refresh()
         state.nav.ui.enable()
 
+
+class KeySelectMode(Mode):
+    """Asks the userto press a key"""
+
+    def __init__(self, nav, callback):
+        self.callback = callback
+        super().__init__(nav, {})
+
+    def __str__(self):
+        return "key"
+
+    def apply(self, state):
+        state.nav.ui.clear()
+
+        label = ui.Label()
+        label.x = state.screen.width() / 2
+        label.y = state.screen.height() / 2
+        label.text = " press a key "
+        state.nav.draw(label)
+
+        state.nav.ui.refresh()
+
+
+    def get_bindings(self, _state, bindings=None):
+        conf = {}
+        for key in list(string.ascii_lowercase):
+            def register(state, key=key):
+                self.callback(state, key)
+
+            register = annotate(register, "register '" + key + "'")
+            conf[key] = [exit_mode, register]
+        return conf
+
+
+
 class MarkMode(Mode):
     """The mark mode allows the user to "bookmark" the current pointer position as a letter.
 
@@ -675,6 +710,7 @@ class MarkMode(Mode):
     def __init__(self, nav, conf, record=False):
         self.nav = nav
         my_marks = self.marks()
+        self.record = record
 
         if not my_marks:
             try:
@@ -684,32 +720,36 @@ class MarkMode(Mode):
                 pass
 
         conf = {}
-        if record:
-            # TODO use key select mode
-            # currently only alphabetic marks
-            for key in list(string.ascii_lowercase):
-                def register(state, key=key):
-                    """register a mark for the current pointer position"""
-
-                    my_marks = self.marks()
-
-                    win = self.nav.input.window()
-                    msg = ("enter a filter for mark " + str(key) + "\n" +
-                           "leave empty for global mark" + "\n\n" +
-                           str(win).lower()
-                          )
-                    cond = nav.input_dialog(msg)
-
-                    if cond != None:
-                        my_marks[cond][key] = (state.zone.x, state.zone.y)
-
-                register = annotate(register, "register '" + key + "'")
-                conf[key] = [register, self.save, exit_mode]
-        else:
+        if not record:
             for key, coord in self.bindings().items():
-                conf[key] = [move_to(coord[0], coord[1]), warp, exit_mode]
+                conf[key] = [exit_mode, move_to(coord[0], coord[1]), warp]
 
         super().__init__(nav, conf)
+
+
+
+    def enter(self, state):
+        super().enter(state)
+        if self.record:
+            def register_mark(state, key):
+                """register a mark for the current pointer position"""
+
+                my_marks = self.marks()
+
+                win = self.nav.input.window()
+                msg = ("enter a filter for mark " + str(key) + "\n" +
+                       "leave empty for global mark" + "\n\n" +
+                       str(win).lower()
+                      )
+                cond = self.nav.input_dialog(msg)
+
+                if cond != None:
+                    my_marks[cond][key] = (state.zone.x, state.zone.y)
+
+            self.nav.state.enter_mode(KeySelectMode(self.nav, register_mark))
+
+
+
 
     def marks(self):
         """mapping from condition -> key -> action"""
@@ -756,39 +796,6 @@ class MarkMode(Mode):
         """save the current marks in a file in the config dir"""
         with open(conf_dir + "marks", "w") as marks_file:
             marks_file.write(json.dumps(self.marks(), indent=4, sort_keys=True))
-
-
-class KeySelectMode(Mode):
-    """Asks the userto press a key"""
-
-    def __init__(self, nav, callback):
-        self.callback = callback
-        super().__init__(nav, {})
-
-    def __str__(self):
-        return "key"
-
-    def apply(self, state):
-        state.nav.ui.clear()
-
-        label = ui.Label()
-        label.x = state.screen.width() / 2
-        label.y = state.screen.height() / 2
-        label.text = " press a key "
-        state.nav.draw(label)
-
-        state.nav.ui.refresh()
-
-
-    def get_bindings(self, _state, bindings=None):
-        conf = {}
-        for key in list(string.ascii_lowercase):
-            def register(state, key=key):
-                self.callback(state, key)
-
-            register = annotate(register, "register '" + key + "'")
-            conf[key] = [exit_mode, register]
-        return conf
 
 
 
@@ -866,7 +873,7 @@ class MacroMode(Mode):
         for key, macro in self.bindings().items():
             x = macro[self.POS][0]
             y = macro[self.POS][1]
-            cmd = "[" + ",sleep(100),".join(macro[self.CMD]) + "]"
+            cmd = "[" + ",sleep(300),".join(macro[self.CMD]) + "]"
             r = exec_yakm(cmd, {}, use_eval=True)
             macro_action = [[move_to(x,y), warp]] + r
             # TODO: ui refresh
