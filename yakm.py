@@ -90,7 +90,6 @@ with command_definitions(lambda: globals()):
         win = state.nav.input.window()
         logger.debug("focused window: " + str(win))
 
-
     def ignore(_state):
         """This command does nothing"""
         pass
@@ -255,7 +254,8 @@ with command_definitions(lambda: globals()):
     def record_macro(state):
         """Record a sequence of commands as a macro"""
 
-        state.mode = [MacroMode(state.nav, configuration["bindings"], record=True)] + state.mode
+        macro_mode = MacroMode(state.nav, configuration["bindings"], record=True)
+        macro_mode.enter(state)
         state.update_bindings()
 
     def apply_macro(state):
@@ -378,8 +378,6 @@ class State:
 
                 bindings[key] = act
 
-        logger.debug("current bindings: " + str(bindings.keys()))
-        info(self)
         return bindings
 
     def update_bindings(self):
@@ -747,30 +745,36 @@ class MacroMode(Mode):
                 pass
 
         conf = {}
-        if record:
-            # if already recording: finish the previous macro and store it
-            if self.is_recording(nav.state):
-                self.finish_recording()
-            else:
-                self.pos = nav.pointer()
-
-        else:
+        if not record:
             for key, macro in self.bindings().items():
                 conf[key] = [macro, exit_mode]
 
         super().__init__(nav, conf)
 
+    def enter(self, state):
+        super().enter(state)
+
+        if self.recording:
+            # if already recording: finish the previous macro and store it
+            instance = self.get_instance(state)
+            if instance:
+                instance.finish_recording()
+            else:
+                state.mode = [self] + state.mode
+                self.pos = self.nav.pointer()
 
     def __str__(self):
         return "macro"
 
     def get_action(self, _state, key, sub_action=None):
-        if self.is_recording(_state):
+        if self.recording:
             if sub_action:
                 def register(state, key=key):
                     """register a mark for the current pointer position"""
                     state.nav.execute_actions(sub_action)
-                    self.cmd_sequence += [get_cmd(sub_action)]
+                    new_sub_action = [a for a in sub_action if a != record_macro]
+                    if new_sub_action:
+                        self.cmd_sequence += [get_cmd(new_sub_action)]
 
                 register = annotate(register, get_cmd(sub_action))
                 return [register]
@@ -785,7 +789,7 @@ class MacroMode(Mode):
         return macro
 
     def get_bindings(self, _state, bindings=None):
-        if self.is_recording(_state):
+        if self.recording:
             return super().get_bindings(_state, bindings)
 
         bindings = {}
@@ -804,12 +808,6 @@ class MacroMode(Mode):
             if type(m) == MacroMode:
                 return m
         return None
-
-    def is_recording(self, state):
-        inst = self.get_instance(state)
-        if inst is None:
-            return False
-        return inst.recording
 
     def macros(self):
         """mapping from condition -> key -> macro"""
@@ -855,6 +853,9 @@ class MacroMode(Mode):
             state.nav.ui.enable()
 
     def finish_recording(self):
+        recorded = self.get_instance(self.nav.state)
+        self.nav.state.mode.remove(recorded)
+
         win = self.nav.input.window()
         msg = ("enter a filter for macro " + str(self.cmd_sequence) + "\n" +
                "leave empty for global macro" + "\n\n" +
@@ -864,7 +865,6 @@ class MacroMode(Mode):
 
         if cond != None:
             # TODO: let user chose macro key
-            recorded = self.get_instance(self.nav.state)
             self.my_macros[cond]["a"] = {
                     self.POS: [recorded.pos.x, recorded.pos.y],
                     self.CMD: recorded.cmd_sequence,
