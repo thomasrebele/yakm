@@ -170,6 +170,10 @@ with command_definitions(lambda: globals()):
 
     def cell_select(col, row, state):
         """Set the zone to the cell with grid coordinates (col, row)"""
+        grid_mode = state.mode[-1]
+        if not type(grid_mode) == GridMode:
+            return
+
         if col > grid_mode.grid.w or row > grid_mode.grid.h:
             return
 
@@ -190,8 +194,11 @@ with command_definitions(lambda: globals()):
     def row_select(row, state):
         """Select the specified row and activate column selection"""
 
-        logger.debug("selecting row " +str(row))
         grid_mode = state.mode[-1]
+        if not type(grid_mode) == GridMode:
+            return
+
+        logger.debug("selecting row " +str(row))
         top = state.zone.top() + row / grid_mode.grid.h  * state.zone.h
         state.zone.y = top + 0.5 * state.zone.h / grid_mode.grid.h
         state.zone.h = max(grid_mode.grid.h, state.zone.h / grid_mode.grid.h)
@@ -205,8 +212,11 @@ with command_definitions(lambda: globals()):
     def col_select(col, state):
         """Select the specified col"""
 
-        logger.debug("selecting col " +str(col))
         grid_mode = state.mode[-1]
+        if not type(grid_mode) == GridMode:
+            return
+
+        logger.debug("selecting col " +str(col))
         left = state.zone.left() + col / grid_mode.grid.w  * state.zone.w
         state.zone.x = left + 0.5 * state.zone.w / grid_mode.grid.w
         state.zone.w = max(grid_mode.grid.w, state.zone.w / grid_mode.grid.w)
@@ -228,6 +238,9 @@ with command_definitions(lambda: globals()):
 
         # switch to dart selection mode
         grid_mode = state.mode[-1]
+        if not type(grid_mode) == GridMode:
+            return
+
         grid_mode.grid_nav = "dart"
 
 
@@ -305,16 +318,20 @@ class State:
 
         # state
         self.mode = []
-        self.zone = ui.Zone()
+        self._zone = ui.Zone()
         self.drag = False
         self._settings = {} # settings for modes
 
     def __str__(self):
         result = "state: " + \
             "  zone " + str(self.zone) + \
-            "  grid " + str(self.grid) + \
             " mode " + ",".join([str(i.__class__.__name__) for i in self.mode])
         return result
+
+    @property
+    def zone(self):
+        """Access the zone"""
+        return self._zone
 
     def copy(self):
         """Create a copy of this state."""
@@ -520,7 +537,7 @@ class GridMode(Mode):
 
 
     def __str__(self):
-        return "grid"
+        return "grid (" + str(self.grid_nav) + ")"
 
     def get_bindings(self, state, bindings=None):
         new_bindings = {}
