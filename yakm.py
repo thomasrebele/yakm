@@ -331,7 +331,10 @@ class State:
     @property
     def zone(self):
         """Access the zone"""
-        return self._zone
+        if not self.mode:
+            return ui.Zone()
+
+        return self.mode[-1].get_zone()
 
     def copy(self):
         """Create a copy of this state."""
@@ -371,6 +374,7 @@ class State:
 
         if self.mode:
             self.mode[-1].enter(self)
+            warp(self)
         else:
             self.nav.ui.disable()
             self.nav.ui.refresh()
@@ -465,9 +469,13 @@ class Mode:
     def __init__(self, nav, conf):
         self.nav = nav
         self.conf = conf
+        self.zone = ui.Zone(nav.state.zone)
 
     def __str__(self):
         return "base"
+
+    def get_zone(self):
+        return self.zone
 
     def apply(self, state):
         """Draw visualization of this mode on the screen"""
@@ -508,6 +516,7 @@ class Mode:
         state.update_bindings()
         state.nav.draw(state.zone)
 
+
     def exit(self, state):
         """This method is called when the user de-activates this mode"""
 
@@ -530,6 +539,7 @@ class GridMode(Mode):
     """
 
     def __init__(self, nav, conf, grid_width, grid_height):
+        super().__init__(nav, {})
         self.grid = Size()
         self.grid.w = grid_width
         self.grid.h = grid_height
@@ -537,7 +547,7 @@ class GridMode(Mode):
 
 
     def __str__(self):
-        return "grid (" + str(self.grid_nav) + ")"
+        return "grid"
 
     def get_bindings(self, state, bindings=None):
         new_bindings = {}

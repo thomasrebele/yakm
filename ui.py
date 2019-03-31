@@ -50,11 +50,17 @@ class Label(Action):
         return (0, 0)
 
 class Zone(Action):
-    def __init__(self):
-        self.x = 0
-        self.y = 0
-        self.w = 100
-        self.h = 100
+    def __init__(self, zone=None):
+        if not zone:
+            self.x = 0
+            self.y = 0
+            self.w = 100
+            self.h = 100
+        else:
+            self.x = zone.x
+            self.y = zone.y
+            self.w = zone.w
+            self.h = zone.h
 
     def __str__(self):
         return "zone: " + str(self.x) + "," + str(self.y) + " size " + str(self.w) + "," + str(self.h)
