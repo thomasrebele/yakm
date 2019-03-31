@@ -223,7 +223,7 @@ with command_definitions(lambda: globals()):
 
         warp(state)
 
-        grid_mode.grid_nav = None
+        grid_mode.grid_nav = "row"
         grid_nav(state)
 
 
@@ -361,6 +361,7 @@ class State:
 
         self.mode += [mode]
         mode.enter(self)
+        self.nav.ui.refresh()
 
     def exit_mode(self, all_modes=False):
         """Leave the currently active mode"""
@@ -375,6 +376,7 @@ class State:
         if self.mode:
             self.mode[-1].enter(self)
             warp(self)
+            self.nav.ui.refresh()
         else:
             self.nav.ui.disable()
             self.nav.ui.refresh()
@@ -547,7 +549,7 @@ class GridMode(Mode):
 
 
     def __str__(self):
-        return "grid"
+        return "grid " + str(self.grid_nav)
 
     def get_bindings(self, state, bindings=None):
         new_bindings = {}
@@ -841,7 +843,7 @@ class MacroMode(Mode):
                 self.pos = self.nav.pointer()
 
     def __str__(self):
-        return "macro"
+        return self.recording and "record" or "replay"
 
     def get_action(self, _state, key, sub_action=None):
         if self.recording:
@@ -875,8 +877,22 @@ class MacroMode(Mode):
             y = macro[self.POS][1]
             cmd = "[" + ",sleep(300),".join(macro[self.CMD]) + "]"
             r = exec_yakm(cmd, {}, use_eval=True)
-            macro_action = [[move_to(x,y), warp]] + r
+
+            def exit_macro(state):
+                if self in state.mode:
+                    zone = state.zone
+
+                    state.mode.remove(self)
+
+                    state.zone.x = zone.x
+                    state.zone.y = zone.y
+                    state.zone.w = zone.w
+                    state.zone.h = zone.h
+                    state.nav.ui.refresh()
+
+
             # TODO: ui refresh
+            macro_action = [[move_to(x,y), warp]] + r + [exit_macro]
             bindings[key] = macro_action
         return bindings
 
