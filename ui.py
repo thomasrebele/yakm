@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import copy
 import traceback
 import threading
 from time import sleep
@@ -76,6 +77,9 @@ class Zone(Action):
 
     def bottom(self):
         return self.y+self.h/2
+
+    def copy(self):
+        return copy.deepcopy(self)
 
 
 class RepeatingThread:

@@ -336,12 +336,21 @@ class State:
 
         return self.mode[-1].get_zone()
 
+    @zone.setter
+    def zone(self, zone):
+        if not self.mode:
+            return
+
+        logger.debug("setting zone " + str(zone))
+        self.mode[-1].zone = zone
+
     def copy(self):
         """Create a copy of this state."""
 
         result = State(self.nav)
         result.screen = self.screen
         result.mode = self.mode[:]
+
         exclude = set(dir(State))
         exclude.update(["nav", "screen", "mode"])
 
@@ -375,7 +384,6 @@ class State:
 
         if self.mode:
             self.mode[-1].enter(self)
-            warp(self)
             self.nav.ui.refresh()
         else:
             self.nav.ui.disable()
@@ -1018,18 +1026,22 @@ class Navigator:
         # TODO: only add state if it has changed
         # something like
         #    if len(self.history) == 0: state != self.history[-1]:
-        self.history.append(state.copy())
+        self.history.append([state.copy(), state.zone.copy()])
 
     def undo_step(self):
         """Undo last action, i.e., go back one step in history"""
+
         if len(self.history) > 1:
             del self.history[-1]
-            self.state = self.history[-1].copy()
+
+            snapshot = self.history[-1]
+            self.state = snapshot[0].copy()
+
+            logger.debug("undo step: setting zone to " + str(snapshot[1]))
+            self.state.zone = snapshot[1].copy()
             self.state.update(undoable=False)
 
             logger.debug("roling back to state " + str(self.state))
-
-
 
 class KeyNavigator(Navigator):
     """This class coordinates the input, the user interface, and the history.
