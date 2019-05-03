@@ -377,7 +377,8 @@ class State:
 
         while self.mode:
             logger.debug("leaving mode " + str(self.mode[-1]))
-            self.mode[-1].exit(self)
+            if not self.mode[-1].exit(self, forced=all_modes):
+                return
             self.mode = self.mode[:-1]
             if not all_modes:
                 break
@@ -527,7 +528,7 @@ class Mode:
         state.nav.draw(state.zone)
 
 
-    def exit(self, state):
+    def exit(self, state, forced=False):
         """This method is called when the user de-activates this mode"""
 
         # only unregister my keybindings
@@ -537,6 +538,7 @@ class Mode:
                 state.nav.input.unregister_key(key)
 
         state.nav.undraw()
+        return True
 
 
 class GridMode(Mode):
@@ -581,6 +583,16 @@ class GridMode(Mode):
 
         bindings.update(new_bindings)
         return bindings
+
+    def exit(self, state, forced=False):
+        if not forced and self.grid_nav == "dart":
+            # TODO: is there a better way to exit dart mode?
+            # TODO: reset grid dimensions correctly
+            self.grid_nav = "row"
+            self.grid.h = 9
+            return False
+
+        return super().exit(state)
 
     def apply(self, state):
         # draw grid
@@ -883,7 +895,7 @@ class MacroMode(Mode):
         for key, macro in self.bindings().items():
             x = macro[self.POS][0]
             y = macro[self.POS][1]
-            cmd = "[" + ",sleep(300),".join(macro[self.CMD]) + "]"
+            cmd = "[" + ",sleep(200),".join(macro[self.CMD]) + "]"
             r = exec_yakm(cmd, {}, use_eval=True)
 
             def exit_macro(state):

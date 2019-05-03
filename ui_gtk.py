@@ -198,7 +198,7 @@ class Window(Gtk.Window):
         self.hide()
 
     def on_draw(self, widget, cr):
-        cr.set_source_rgba(1.0, 0.0, 0.0, .75)
+        cr.set_source_rgba(1.0, 0.0, 0.0, .5)
         cr.paint()
 
     def cut_pointer(self, region, x, y):
